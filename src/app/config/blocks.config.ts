@@ -29,6 +29,7 @@ export interface BlockDefinition {
     transparent?: boolean;
     isTool?: boolean;
     drops?: { item: string; count: number };
+    maxStack?: number;
 }
 
 export const BLOCKS: Record<string, BlockDefinition> = {
@@ -121,7 +122,8 @@ export const BLOCKS: Record<string, BlockDefinition> = {
             type: 'flat',
             color1: '#FF0000'
         },
-        isTool: true
+        isTool: true,
+        maxStack: 1
     },
     hover: {
         procedural: {

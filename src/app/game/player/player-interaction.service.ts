@@ -1,15 +1,16 @@
 import { Injectable } from '@angular/core';
+import * as THREE from 'three';
 import { BlockPlacerService } from '../world/block-placer.service';
 import { GameStateService } from '../../services/game-state.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { PlayerRaycasterService } from './player-raycaster.service';
 import { CrackOverlayService } from '../rendering/crack-overlay.service';
 import { ToolRendererService } from '../rendering/tool-renderer.service';
 import { SceneManagerService } from '../core/scene-manager.service';
-import { PLAYER_CONFIG } from '../../config/player.config';
 import { InputManagerService } from '../core/input-manager.service';
 import { ItemDropSystemService } from '../systems/item-drop-system.service';
 import { BLOCKS } from '../../config/blocks.config';
-import * as THREE from 'three';
+import { PLAYER_CONFIG } from '../../config/player.config';
 
 @Injectable({
   providedIn: 'root',
@@ -30,6 +31,7 @@ export class PlayerInteractionService {
   constructor(
     private blockPlacer: BlockPlacerService,
     private store: GameStateService,
+    private inventoryService: InventoryService,
     private raycaster: PlayerRaycasterService,
     private crackOverlay: CrackOverlayService,
     private toolRenderer: ToolRendererService,
@@ -63,13 +65,17 @@ export class PlayerInteractionService {
 
     const block = this.blockPlacer.getBlock(hitPos.x, hitPos.y, hitPos.z);
     if (block?.type === 'workbench') {
-      this.store.openWorkbenchMenu();
+      // Temporarily disabled or use new UI
+      // this.store.openWorkbenchMenu(); 
+      this.store.openInventoryMenu(); // Open inventory instead since we have 2x2
       this.input.unlockPointer();
       return;
     }
 
-    const type = this.store.selectedBlockName();
-    if (type === 'axe') {
+    const selected = this.inventoryService.selectedItem();
+    const type = selected.item;
+
+    if (!type || type === 'axe') { // Simple check, ideally check isTool
       return;
     }
 
@@ -90,18 +96,9 @@ export class PlayerInteractionService {
     const ty = Math.round(target.y);
     const tz = Math.round(target.z);
 
-    if (type === 'workbench') {
-      if (this.store.hasWorkbench() > 0 && this.blockPlacer.addBlock(tx, ty, tz, 'workbench')) {
-        this.store.removeFromInventory('workbench', 1);
-        if (this.store.hasWorkbench() === 0) {
-          this.store.selectedSlot.set(1);
-        }
-      }
-      return;
-    }
-
-    if (this.store.hasItem(type) && this.blockPlacer.addBlock(tx, ty, tz, type)) {
-      this.store.removeFromInventory(type, 1);
+    // workbench special handling removed as it's just a block now
+    if (this.blockPlacer.addBlock(tx, ty, tz, type)) {
+        this.inventoryService.removeOneFromSelected();
     }
   }
 
@@ -129,8 +126,9 @@ export class PlayerInteractionService {
     }
 
     let baseSpeed = this.MINING_SPEEDS[block.type] ?? 1.0;
-    const slot = this.store.selectedSlot();
-    if (slot === 9 && this.store.hasAxe() > 0 && (block.type === 'wood' || block.type === 'workbench')) {
+    const selected = this.inventoryService.selectedItem();
+    // Check axe
+    if (selected.item === 'axe' && (block.type === 'wood' || block.type === 'workbench')) {
       baseSpeed /= 5.0;
     }
 

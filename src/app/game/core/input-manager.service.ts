@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { SceneManagerService } from './scene-manager.service';
 import { GameStateService } from '../../services/game-state.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 export interface InteractionCallbacks {
   onPrimaryDown: () => void;
@@ -33,6 +34,7 @@ export class InputManagerService {
   constructor(
     private sceneManager: SceneManagerService,
     private store: GameStateService,
+    private inventoryService: InventoryService,
   ) {}
 
   initialize(callbacks: InteractionCallbacks) {
@@ -135,31 +137,15 @@ export class InputManagerService {
           event.preventDefault();
           this.jumpActive = true;
           break;
-        case 'Digit1':
-          this.store.selectedSlot.set(1);
-          break;
-        case 'Digit2':
-          this.store.selectedSlot.set(2);
-          break;
-        case 'Digit3':
-          this.store.selectedSlot.set(3);
-          break;
-        case 'Digit4':
-          this.store.selectedSlot.set(4);
-          break;
-        case 'Digit5':
-          this.store.selectedSlot.set(5);
-          break;
-        case 'Digit8':
-          if (this.store.hasWorkbench() > 0) {
-            this.store.selectedSlot.set(8);
-          }
-          break;
-        case 'Digit9':
-          if (this.store.hasAxe() > 0) {
-            this.store.selectedSlot.set(9);
-          }
-          break;
+        case 'Digit1': this.inventoryService.selectHotbarSlot(0); break;
+        case 'Digit2': this.inventoryService.selectHotbarSlot(1); break;
+        case 'Digit3': this.inventoryService.selectHotbarSlot(2); break;
+        case 'Digit4': this.inventoryService.selectHotbarSlot(3); break;
+        case 'Digit5': this.inventoryService.selectHotbarSlot(4); break;
+        case 'Digit6': this.inventoryService.selectHotbarSlot(5); break;
+        case 'Digit7': this.inventoryService.selectHotbarSlot(6); break;
+        case 'Digit8': this.inventoryService.selectHotbarSlot(7); break;
+        case 'Digit9': this.inventoryService.selectHotbarSlot(8); break;
       }
     }
   }

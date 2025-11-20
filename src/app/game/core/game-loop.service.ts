@@ -10,6 +10,8 @@ import { SkyRendererService } from '../rendering/sky-renderer.service';
 import { GameStateService } from '../../services/game-state.service';
 import { ItemDropSystemService } from '../systems/item-drop-system.service';
 import { ItemDropRendererService } from '../rendering/item-drop-renderer.service';
+import { InventoryStackService } from '../inventory/inventory-stack.service';
+import { InventoryInitService } from '../inventory/inventory-init.service';
 
 @Injectable({
   providedIn: 'root',
@@ -31,6 +33,9 @@ export class GameLoopService {
     private store: GameStateService,
     private itemDropSystem: ItemDropSystemService,
     private itemDropRenderer: ItemDropRendererService,
+    private inventoryStackService: InventoryStackService,
+    // Inject init service to ensure it runs
+    private inventoryInit: InventoryInitService
   ) {}
 
   start() {
@@ -70,7 +75,7 @@ export class GameLoopService {
     pickedUpIds.forEach((id) => {
       const drop = this.itemDropSystem.getDropById(id);
       if (drop) {
-        this.store.addToInventory(drop.type, 1);
+        this.inventoryStackService.addItem(drop.type, 1);
         this.itemDropRenderer.removeDrop(id);
         this.itemDropSystem.removeDrop(id);
       }
