@@ -1,6 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
+import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../config/blocks.config';
 
 @Injectable({
   providedIn: 'root'
@@ -24,52 +25,75 @@ export class MaterialService {
   }
 
   private initMaterials() {
-    // --- Textures ---
-    const grassTopTex = this.createProceduralTexture('#5fa848', '#4a8538', 'noise');
-    const dirtTex = this.createProceduralTexture('#795548', '#5d4037', 'noise');
-    
-    // Load external texture for grass side (using your file)
-    const grassSideTex = this.textureLoader.load('assets/textures/grass-side.webp', 
-      undefined, 
-      undefined, 
-      (err) => console.error('Error loading grass-side.webp:', err)
-    );
-    grassSideTex.magFilter = THREE.NearestFilter; // Keep pixelated look
-    grassSideTex.colorSpace = THREE.SRGBColorSpace;
-    
-    const stoneTex = this.createProceduralTexture('#9e9e9e', '#757575');
-    const woodTex = this.createProceduralTexture('#8D6E63', '#6D4C41', 'wood_side');
-    const leavesTex = this.createProceduralTexture('#2E7D32', '#1B5E20');
-    const workbenchTex = this.createProceduralTexture('#D2691E', '#A0522D', 'workbench');
+    Object.entries(BLOCKS).forEach(([key, def]) => {
+        // Handle tools/special items
+        if (def.isTool) {
+            if (key === 'hover') {
+                this.materials[key] = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+            } else if (def.procedural?.type === 'flat') {
+                 this.materials[key] = new THREE.MeshLambertMaterial({ color: def.procedural.color1 });
+            }
+            return;
+        }
 
-    // --- Base Materials ---
-    const matGrassTop = new THREE.MeshLambertMaterial({ map: grassTopTex });
-    const matDirt = new THREE.MeshLambertMaterial({ map: dirtTex });
-    const matGrassSide = new THREE.MeshLambertMaterial({ map: grassSideTex });
+        const faces = ['right', 'left', 'top', 'bottom', 'front', 'back'] as const;
+        
+        const getFaceConfig = (face: string): BlockFaceDefinition => {
+            // 1. Check specific face override
+            const faceDef = def.faces?.[face as keyof typeof def.faces];
+            if (faceDef) return faceDef;
+            
+            // 2. Check 'side' alias for side faces
+            if (['right', 'left', 'front', 'back'].includes(face)) {
+                if (def.faces?.side) return def.faces.side;
+            }
+            
+            // 3. Fallback to block default
+            return { texture: def.texture, procedural: def.procedural };
+        };
 
-    this.materials = {
-      // Grass Block: Right, Left, Top, Bottom, Front, Back
-      // Uses array to apply different textures to faces
-      grass: [
-        matGrassSide, // Right
-        matGrassSide, // Left
-        matGrassTop,  // Top
-        matDirt,      // Bottom
-        matGrassSide, // Front
-        matGrassSide  // Back
-      ],
-      
-      dirt: matDirt,
-      stone: new THREE.MeshLambertMaterial({ map: stoneTex }),
-      wood: new THREE.MeshLambertMaterial({ map: woodTex }),
-      leaves: new THREE.MeshLambertMaterial({ map: leavesTex, transparent: false }),
-      workbench: new THREE.MeshLambertMaterial({ map: workbenchTex }),
-      axe: new THREE.MeshLambertMaterial({ color: 0xFF0000 }),
-      hover: new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
-    };
+        // Create materials for all 6 faces
+        const materials = faces.map(face => {
+             const faceConfig = getFaceConfig(face);
+             return this.createMaterial(faceConfig, def.transparent);
+        });
+
+        // If no specific faces were defined, we can treat this as a single-material block
+        // This is an optimization and matches original behavior for dirt/stone/etc.
+        if (!def.faces) {
+             this.materials[key] = materials[0];
+        } else {
+             this.materials[key] = materials;
+        }
+    });
   }
 
-  private createProceduralTexture(color1: string, color2: string, type: 'noise' | 'wood_side' | 'workbench' = 'noise'): THREE.Texture {
+  private createMaterial(config: BlockFaceDefinition, transparent: boolean = false): THREE.Material {
+      let texture: THREE.Texture;
+
+      if (config.texture) {
+          texture = this.textureLoader.load(config.texture);
+          texture.magFilter = THREE.NearestFilter;
+          texture.colorSpace = THREE.SRGBColorSpace;
+      } else if (config.procedural) {
+          texture = this.createProceduralTexture(
+              config.procedural.color1, 
+              config.procedural.color2 || config.procedural.color1, 
+              config.procedural.type
+          );
+      } else {
+          // Fallback texture if nothing is specified
+          texture = this.createProceduralTexture('#FF00FF', '#000000');
+      }
+
+      return new THREE.MeshLambertMaterial({ 
+          map: texture, 
+          transparent: transparent,
+          alphaTest: transparent ? 0.5 : 0 
+      });
+  }
+
+  private createProceduralTexture(color1: string, color2: string, type: 'noise' | 'wood_side' | 'workbench' | 'color' | 'flat' = 'noise'): THREE.Texture {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;

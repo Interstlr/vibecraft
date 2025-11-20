@@ -1,7 +1,7 @@
 
 export const PLAYER_CONFIG = {
   // Movement Physics
-  moveSpeed: 65.0,      // Acceleration force
+  moveSpeed: 55.0,      // Acceleration force
   jumpForce: 14.0,       // Initial upward velocity (increased to match gravity)
   gravity: 65.0,         // Downward acceleration (Doubled to remove moon-gravity feel)
   drag: 10.0,            // Air/Ground resistance (deceleration)
