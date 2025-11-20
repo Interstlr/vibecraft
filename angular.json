@@ -17,7 +17,11 @@
               "browser": "."
             },
             "browser": "index.tsx",
-            "tsConfig": "tsconfig.json"
+            "index": "index.html",
+            "tsConfig": "tsconfig.json",
+            "assets": [
+              "assets"
+            ]
           },
           "configurations": {
             "production": {
