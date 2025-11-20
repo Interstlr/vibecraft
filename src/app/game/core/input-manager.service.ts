@@ -30,6 +30,7 @@ export class InputManagerService {
   private keyUpHandler = (event: KeyboardEvent) => this.handleKeyUp(event);
   private mouseDownHandler = (event: MouseEvent) => this.handleMouseDown(event);
   private mouseUpHandler = (event: MouseEvent) => this.handleMouseUp(event);
+  private wheelHandler = (event: WheelEvent) => this.handleWheel(event);
 
   constructor(
     private sceneManager: SceneManagerService,
@@ -62,6 +63,7 @@ export class InputManagerService {
     window.addEventListener('keyup', this.keyUpHandler);
     window.addEventListener('mousedown', this.mouseDownHandler);
     window.addEventListener('mouseup', this.mouseUpHandler);
+    window.addEventListener('wheel', this.wheelHandler, { passive: false });
   }
 
   dispose() {
@@ -69,6 +71,7 @@ export class InputManagerService {
     window.removeEventListener('keyup', this.keyUpHandler);
     window.removeEventListener('mousedown', this.mouseDownHandler);
     window.removeEventListener('mouseup', this.mouseUpHandler);
+    window.removeEventListener('wheel', this.wheelHandler);
   }
 
   lockPointer() {
@@ -197,6 +200,23 @@ export class InputManagerService {
 
     if (event.button === 0) {
       this.callbacks.onPrimaryUp();
+    }
+  }
+
+  private handleWheel(event: WheelEvent) {
+    if (!this.controls.isLocked) {
+      return;
+    }
+
+    const direction = Math.sign(event.deltaY);
+    const currentIndex = this.inventoryService.selectedHotbarIndex();
+
+    if (direction > 0) {
+      const nextIndex = (currentIndex + 1) % 9;
+      this.inventoryService.selectHotbarSlot(nextIndex);
+    } else if (direction < 0) {
+      const prevIndex = (currentIndex - 1 + 9) % 9;
+      this.inventoryService.selectHotbarSlot(prevIndex);
     }
   }
 }

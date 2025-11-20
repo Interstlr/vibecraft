@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { SceneManagerService } from '../core/scene-manager.service';
-import { GameStateService } from '../../services/game-state.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,7 +13,7 @@ export class ToolRendererService {
 
   constructor(
     private sceneManager: SceneManagerService,
-    private store: GameStateService,
+    private inventoryService: InventoryService,
   ) {}
 
   initialize() {
@@ -33,12 +33,12 @@ export class ToolRendererService {
       return;
     }
 
-    const slot = this.store.selectedSlot();
-    const hasAxeEquipped = slot === 9 && this.store.hasAxe() > 0;
-    const slotItemCount = this.getInventoryCountForSlot(slot);
-    const shouldShowHand = !hasAxeEquipped && slotItemCount === 0;
+    const selected = this.inventoryService.selectedItem();
+    const hasItem = !!selected.item && selected.count > 0;
+    const isAxe = selected.item === 'axe';
+    const shouldShowHand = !isAxe && !hasItem;
 
-    if (hasAxeEquipped) {
+    if (isAxe) {
       this.axeGroup.visible = true;
       if (this.isSwinging) {
         const swingSpeed = 8;
@@ -126,27 +126,6 @@ export class ToolRendererService {
     group.rotation.set(-Math.PI / 5, Math.PI / 11, Math.PI / 18);
     group.visible = false;
     return group;
-  }
-
-  private getInventoryCountForSlot(slot: number): number {
-    switch (slot) {
-      case 1:
-        return this.store.grassCount();
-      case 2:
-        return this.store.dirtCount();
-      case 3:
-        return this.store.stoneCount();
-      case 4:
-        return this.store.woodCount();
-      case 5:
-        return this.store.leavesCount();
-      case 8:
-        return this.store.hasWorkbench();
-      case 9:
-        return this.store.hasAxe();
-      default:
-        return 0;
-    }
   }
 }
 
