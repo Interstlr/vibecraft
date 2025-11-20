@@ -71,10 +71,16 @@ export const BLOCKS: Record<string, BlockDefinition> = {
     },
     stone: {
         drops: { item: 'stone', count: 1 },
-        procedural: {
-            type: 'noise',
-            color1: '#9e9e9e',
-            color2: '#757575'
+        faces: {
+            side: {
+                texture: 'assets/textures/stone.png',
+            },
+            top: {
+                texture: 'assets/textures/stone.png',
+            },
+            bottom: {
+                texture: 'assets/textures/stone.png',
+            }
         }
     },
     wood: {

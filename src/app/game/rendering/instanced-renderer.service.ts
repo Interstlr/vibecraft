@@ -8,7 +8,8 @@ import { WORLD_CONFIG } from '../../config/world.config';
   providedIn: 'root',
 })
 export class InstancedRendererService {
-  private readonly maxInstances = Math.max(10000, WORLD_CONFIG.size * WORLD_CONFIG.size * 6);
+  // Increased multiplier to accomodate deep stone layers (30+ blocks deep)
+  private readonly maxInstances = Math.max(10000, WORLD_CONFIG.size * WORLD_CONFIG.size * 50);
   private instancedMeshes = new Map<string, THREE.InstancedMesh>();
   private nextInstanceIndex = new Map<string, number>();
   private freeInstanceIndices = new Map<string, number[]>();

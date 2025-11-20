@@ -86,8 +86,15 @@ export class WorldGeneratorService {
 
   private buildLandColumn(cell: TerrainCell, world: WorldBuilder) {
     world.addBlock(cell.x, cell.height, cell.z, 'grass');
-    for (let y = cell.height - 1; y >= -2; y--) {
-      world.addBlock(cell.x, y, cell.z, 'dirt');
+    
+    // Layer of dirt below grass
+    world.addBlock(cell.x, cell.height - 1, cell.z, 'dirt');
+
+    // Stone layer starting from the 3rd block from surface (height - 2)
+    const stoneStart = cell.height - 2;
+    const stoneDepth = 30;
+    for (let y = stoneStart; y > stoneStart - stoneDepth; y--) {
+      world.addBlock(cell.x, y, cell.z, 'stone');
     }
   }
 
@@ -100,8 +107,16 @@ export class WorldGeneratorService {
       world.addBlock(cell.x, y, cell.z, 'water');
     }
 
-    for (let y = Math.max(waterBase - 1, -2); y >= -2; y--) {
-      world.addBlock(cell.x, y, cell.z, 'dirt');
+    // Dirt under water
+    const groundY = waterBase - 1;
+    world.addBlock(cell.x, groundY, cell.z, 'dirt');
+    world.addBlock(cell.x, groundY - 1, cell.z, 'dirt');
+
+    // Stone layer under water
+    const stoneStart = groundY - 2;
+    const stoneDepth = 30;
+    for (let y = stoneStart; y > stoneStart - stoneDepth; y--) {
+      world.addBlock(cell.x, y, cell.z, 'stone');
     }
   }
 
