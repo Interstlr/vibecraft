@@ -196,25 +196,25 @@ export class ChickenSystemService {
     // 1. Try X movement
     let nextPos = chicken.position.clone();
     nextPos.x += move.x;
-    if (this.hasCollision(nextPos)) {
+    if (this.checkCollision(nextPos)) {
         // Auto-jump check
-        if (chicken.onGround && !this.hasCollision(nextPos.clone().add(new THREE.Vector3(0, 1.1, 0)))) {
+        if (chicken.onGround && !this.checkCollision(nextPos.clone().add(new THREE.Vector3(0, 1.1, 0)))) {
              chicken.velocity.y = this.JUMP_FORCE;
              chicken.onGround = false;
-        } else {
-            nextPos.x = chicken.position.x; // Stop X
         }
+        // Always stop horizontal movement on collision
+        nextPos.x = chicken.position.x;
     }
 
     // 2. Try Z movement
     nextPos.z += move.z;
-    if (this.hasCollision(nextPos)) {
-         if (chicken.onGround && !this.hasCollision(nextPos.clone().add(new THREE.Vector3(0, 1.1, 0)))) {
+    if (this.checkCollision(nextPos)) {
+         if (chicken.onGround && !this.checkCollision(nextPos.clone().add(new THREE.Vector3(0, 1.1, 0)))) {
              chicken.velocity.y = this.JUMP_FORCE;
              chicken.onGround = false;
-        } else {
-             nextPos.z = chicken.position.z; // Stop Z
         }
+        // Always stop horizontal movement on collision
+        nextPos.z = chicken.position.z;
     }
 
     // 3. Try Y movement (Vertical)
@@ -222,27 +222,33 @@ export class ChickenSystemService {
     
     // Floor/Ceiling Collision
     if (move.y < 0) { // Falling
-        const feetBlockY = Math.floor(nextPos.y);
-        // Check block below feet
-        // To be robust: check a small box around feet
-        if (this.hasCollision(nextPos)) {
+        // Check feet collision
+        if (this.checkCollision(nextPos)) {
              // Snap to top of block
              nextPos.y = Math.floor(nextPos.y) + 1;
              chicken.velocity.y = 0;
              chicken.onGround = true;
-        } else if (this.blockPlacer.hasBlock(Math.floor(nextPos.x), feetBlockY - 1, Math.floor(nextPos.z)) && nextPos.y < feetBlockY + 0.01) {
-            // Snap if very close to block top
-             nextPos.y = feetBlockY;
-             chicken.velocity.y = 0;
-             chicken.onGround = true;
         } else {
-             chicken.onGround = false;
+             // Check if we are just above a block
+             const blockBelowY = Math.floor(nextPos.y);
+             if (this.blockPlacer.hasBlock(Math.floor(nextPos.x), blockBelowY - 1, Math.floor(nextPos.z))) {
+                 if (nextPos.y < blockBelowY + 0.05) {
+                     nextPos.y = blockBelowY;
+                     chicken.velocity.y = 0;
+                     chicken.onGround = true;
+                 } else {
+                     chicken.onGround = false;
+                 }
+             } else {
+                 chicken.onGround = false;
+             }
         }
     } else if (move.y > 0) { // Jumping
-        const headBlockY = Math.floor(nextPos.y + 0.7);
-        if (this.blockPlacer.hasBlock(Math.floor(nextPos.x), headBlockY, Math.floor(nextPos.z))) {
+        const headPos = nextPos.clone();
+        headPos.y += 0.7;
+        if (this.checkCollision(headPos)) {
             // Hit head
-            nextPos.y = Math.floor(nextPos.y + 0.7) - 0.71;
+            nextPos.y = Math.floor(headPos.y) - 0.71;
             chicken.velocity.y = 0;
         }
         chicken.onGround = false;
@@ -251,13 +257,23 @@ export class ChickenSystemService {
     chicken.position.copy(nextPos);
   }
 
-  private hasCollision(pos: THREE.Vector3): boolean {
-      // Simple point check at feet level
-      // For better robustness check width too, but point is ok for simple mobs
-      const x = Math.floor(pos.x);
-      const y = Math.floor(pos.y);
-      const z = Math.floor(pos.z);
-      return this.blockPlacer.hasBlock(x, y, z);
+  private checkCollision(pos: THREE.Vector3): boolean {
+      // Check collision with a small radius (0.2) to prevent clipping
+      const r = 0.2;
+      const minX = Math.floor(pos.x - r);
+      const maxX = Math.floor(pos.x + r);
+      const minZ = Math.floor(pos.z - r);
+      const maxZ = Math.floor(pos.z + r);
+      const y = Math.floor(pos.y); // Feet level
+
+      for (let x = minX; x <= maxX; x++) {
+          for (let z = minZ; z <= maxZ; z++) {
+              if (this.blockPlacer.hasBlock(x, y, z)) {
+                  return true;
+              }
+          }
+      }
+      return false;
   }
 
   private updateAnimation(chicken: ChickenEntity, delta: number) {
