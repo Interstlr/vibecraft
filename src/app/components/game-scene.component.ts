@@ -1,4 +1,3 @@
-
 import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as THREE from 'three';
@@ -409,7 +408,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   }
 
   private handleAnimations(time: number, delta: number) {
-    if (this.store.selectedSlot() === 6) {
+    if (this.store.selectedSlot() === 9) { // Axe
       this.axeGroup.visible = true;
       if (this.isSwinging) {
         const swingSpeed = 8;
@@ -427,14 +426,11 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   }
 
   // --- Voxel Raycasting (DDA Algorithm) ---
-  // This replaces the slow THREE.Raycaster.intersectObjects
   private performRaycast() {
     this.hitBlockPosition = null;
     this.hitBlockNormal = null;
     this.outlineMesh.visible = false;
 
-    // IMPORTANT: Shift by 0.5 because blocks are centered at integers,
-    // meaning their boundaries are at .5 values. DDA works on integer grid boundaries.
     const start = this.camera.position.clone();
     start.x += 0.5;
     start.y += 0.5;
@@ -463,11 +459,9 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     let hitNormal = new THREE.Vector3();
     const maxReach = PLAYER_CONFIG.reachDistance;
     
-    // Safety loop limit to prevent infinite hangs
     const maxSteps = maxReach * 3; 
 
     for (let i = 0; i < maxSteps; i++) {
-      // Check if current voxel exists
       if (this.blockData.has(`${x},${y},${z}`)) {
         this.hitBlockPosition = new THREE.Vector3(x, y, z);
         this.hitBlockNormal = hitNormal;
@@ -476,7 +470,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
-      // Move to next voxel
       if (tMaxX < tMaxY) {
         if (tMaxX < tMaxZ) {
           x += stepX;
@@ -499,8 +492,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         }
       }
 
-      // Check distance from center of current voxel (x+0.5) to start (shifted)
-      // Equivalent to checking distance from integer center to cloned start
       const distSq = (x + 0.5 - start.x)**2 + (y + 0.5 - start.y)**2 + (z + 0.5 - start.z)**2;
       if (distSq > maxReach * maxReach) {
         reachedLimit = true;
@@ -516,7 +507,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       
       if (block) {
         let baseSpeed = this.MINING_SPEEDS[block.type] || 1.0;
-        if (this.store.selectedSlot() === 6 && (block.type === 'wood' || block.type === 'workbench')) {
+        if (this.store.selectedSlot() === 9 && (block.type === 'wood' || block.type === 'workbench')) {
            baseSpeed = baseSpeed / 5.0;
         }
 
@@ -525,8 +516,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         this.store.miningProgress.set(percentage);
 
         if (this.miningTimer >= baseSpeed) {
-           if (block.type === 'wood') this.store.woodCount.update(c => c + 1);
-           if (block.type === 'workbench') this.store.hasWorkbench.update(c => c + 1);
+           // Add to inventory
+           this.store.addToInventory(block.type, 1);
            
            this.removeBlock(this.hitBlockPosition.x, this.hitBlockPosition.y, this.hitBlockPosition.z);
            this.stopMining();
@@ -580,8 +571,9 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         case 'Digit2': this.store.selectedSlot.set(2); break;
         case 'Digit3': this.store.selectedSlot.set(3); break;
         case 'Digit4': this.store.selectedSlot.set(4); break;
-        case 'Digit5': if (this.store.hasWorkbench() > 0) this.store.selectedSlot.set(5); break;
-        case 'Digit6': if (this.store.hasAxe() > 0) this.store.selectedSlot.set(6); break;
+        case 'Digit5': this.store.selectedSlot.set(5); break; // Leaves
+        case 'Digit8': if (this.store.hasWorkbench() > 0) this.store.selectedSlot.set(8); break;
+        case 'Digit9': if (this.store.hasAxe() > 0) this.store.selectedSlot.set(9); break;
       }
     }
   }
@@ -627,11 +619,15 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
              if (type === 'workbench') {
                if (this.store.hasWorkbench() > 0) {
                  this.addBlock(pos.x, pos.y, pos.z, 'workbench');
-                 this.store.hasWorkbench.update(v => v - 1);
+                 this.store.removeFromInventory('workbench', 1);
                  if (this.store.hasWorkbench() === 0) this.store.selectedSlot.set(1);
                }
              } else {
-               this.addBlock(pos.x, pos.y, pos.z, type);
+               // Check if player has block
+               if (this.store.hasItem(type)) {
+                  this.store.removeFromInventory(type, 1);
+                  this.addBlock(pos.x, pos.y, pos.z, type);
+               }
              }
           }
         }

@@ -1,4 +1,3 @@
-
 import { Component, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameStateService } from '../services/game-state.service';
@@ -29,61 +28,91 @@ import { GameStateService } from '../services/game-state.service';
       <p>Blocks: {{ store.blockCount() }}</p>
     </div>
 
-    <!-- Inventory Display -->
-    <div class="absolute top-5 right-5 text-white bg-black/50 p-4 rounded-lg select-none text-right">
+    <!-- Inventory Display (Simplified for now, main focus on Hotbar) -->
+    <div class="absolute top-5 right-5 text-white bg-black/50 p-4 rounded-lg select-none text-right hidden"> <!-- Hidden for now as hotbar shows counts -->
       <h3 class="font-bold border-b border-white/30 mb-2">Resources</h3>
       <p>Wood: {{ store.woodCount() }}</p>
-      <div [class.text-lime-400]="store.hasAxe() > 0" [class.text-gray-400]="store.hasAxe() === 0">
-        Axe: {{ store.hasAxe() > 0 ? 'Yes' : 'No' }}
-      </div>
     </div>
 
     <!-- Hotbar -->
     <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 bg-black/30 p-2 rounded-lg">
       <!-- Slot 1: Grass -->
-      <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform"
+      <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
            [class.border-white]="store.selectedSlot() === 1" 
            [class.scale-110]="store.selectedSlot() === 1"
-           [class.border-white-30]="store.selectedSlot() !== 1"
-           style="background: #5fa848;">1</div>
+           [class.border-white/30]="store.selectedSlot() !== 1"
+           [style.opacity]="store.grassCount() > 0 ? 1 : 0.3"
+           style="background: #5fa848;">
+        <span class="absolute top-0 left-1 text-[8px] opacity-80">1</span>
+        <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">{{ store.grassCount() }}</span>
+      </div>
 
       <!-- Slot 2: Dirt -->
-      <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform"
+      <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
            [class.border-white]="store.selectedSlot() === 2" 
            [class.scale-110]="store.selectedSlot() === 2"
-           [class.border-white-30]="store.selectedSlot() !== 2"
-           style="background: #795548;">2</div>
+           [class.border-white/30]="store.selectedSlot() !== 2"
+           [style.opacity]="store.dirtCount() > 0 ? 1 : 0.3"
+           style="background: #795548;">
+        <span class="absolute top-0 left-1 text-[8px] opacity-80">2</span>
+        <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">{{ store.dirtCount() }}</span>
+      </div>
       
       <!-- Slot 3: Stone -->
-      <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform"
+      <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
            [class.border-white]="store.selectedSlot() === 3" 
            [class.scale-110]="store.selectedSlot() === 3"
-           [class.border-white-30]="store.selectedSlot() !== 3"
-           style="background: #757575;">3</div>
+           [class.border-white/30]="store.selectedSlot() !== 3"
+           [style.opacity]="store.stoneCount() > 0 ? 1 : 0.3"
+           style="background: #757575;">
+        <span class="absolute top-0 left-1 text-[8px] opacity-80">3</span>
+        <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">{{ store.stoneCount() }}</span>
+      </div>
 
       <!-- Slot 4: Wood -->
-      <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform"
+      <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
            [class.border-white]="store.selectedSlot() === 4" 
            [class.scale-110]="store.selectedSlot() === 4"
-           [class.border-white-30]="store.selectedSlot() !== 4"
-           style="background: #8D6E63;">4</div>
+           [class.border-white/30]="store.selectedSlot() !== 4"
+           [style.opacity]="store.woodCount() > 0 ? 1 : 0.3"
+           style="background: #8D6E63;">
+        <span class="absolute top-0 left-1 text-[8px] opacity-80">4</span>
+        <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">{{ store.woodCount() }}</span>
+      </div>
+
+      <!-- Slot 5: Leaves -->
+      <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
+           [class.border-white]="store.selectedSlot() === 5" 
+           [class.scale-110]="store.selectedSlot() === 5"
+           [class.border-white/30]="store.selectedSlot() !== 5"
+           [style.opacity]="store.leavesCount() > 0 ? 1 : 0.3"
+           style="background: #2d5a27;">
+        <span class="absolute top-0 left-1 text-[8px] opacity-80">5</span>
+        <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">{{ store.leavesCount() }}</span>
+      </div>
       
-      <!-- Slot 5: Workbench (Conditional) -->
+      <!-- Slot 8: Workbench (Conditional) -->
       @if (store.hasWorkbench() > 0) {
-        <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-black text-[10px] font-bold shadow-sm transition-transform"
-             [class.border-white]="store.selectedSlot() === 5" 
-             [class.scale-110]="store.selectedSlot() === 5"
-             [class.border-white-30]="store.selectedSlot() !== 5"
-             style="background: #DAA520;">5</div>
+        <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-black text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
+             [class.border-white]="store.selectedSlot() === 8" 
+             [class.scale-110]="store.selectedSlot() === 8"
+             [class.border-white/30]="store.selectedSlot() !== 8"
+             style="background: #DAA520;">
+          <span class="absolute top-0 left-1 text-[8px] opacity-80 text-white">8</span>
+          <span class="absolute bottom-0 right-1 text-xs drop-shadow-md text-white">{{ store.hasWorkbench() }}</span>
+        </div>
       }
 
-      <!-- Slot 6: Axe (Conditional) -->
+      <!-- Slot 9: Axe (Conditional) -->
       @if (store.hasAxe() > 0) {
-        <div class="w-10 h-10 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform"
-             [class.border-white]="store.selectedSlot() === 6" 
-             [class.scale-110]="store.selectedSlot() === 6"
-             [class.border-white-30]="store.selectedSlot() !== 6"
-             style="background: red;">6</div>
+        <div class="w-12 h-12 border-[3px] rounded relative flex items-center justify-center text-white text-[10px] font-bold shadow-sm transition-transform cursor-pointer"
+             [class.border-white]="store.selectedSlot() === 9" 
+             [class.scale-110]="store.selectedSlot() === 9"
+             [class.border-white/30]="store.selectedSlot() !== 9"
+             style="background: red;">
+          <span class="absolute top-0 left-1 text-[8px] opacity-80">9</span>
+          <span class="absolute bottom-0 right-1 text-xs drop-shadow-md">1</span>
+        </div>
       }
     </div>
 
@@ -128,7 +157,7 @@ import { GameStateService } from '../services/game-state.service';
           <p>WASD - Move | SPACE - Jump</p>
           <p>LMB (Hold) - Mine | RMB - Build/Interact</p>
           <p>E - Crafting Menu</p>
-          <p>1-6 - Select Item</p>
+          <p>1-5 - Select Block | 8 - Workbench | 9 - Axe</p>
         </div>
       </div>
     }
@@ -146,14 +175,14 @@ export class GameUiComponent {
 
   craftWorkbench() {
     if (this.store.craftWorkbench()) {
-      alert("Workbench crafted! Select slot 5.");
+      alert("Workbench crafted! Select slot 8.");
       this.requestLock.emit();
     }
   }
 
   craftAxe() {
     if (this.store.craftAxe()) {
-      alert("Axe crafted! Select slot 6.");
+      alert("Axe crafted! Select slot 9.");
       this.requestLock.emit();
     }
   }
