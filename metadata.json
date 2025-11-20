@@ -1,0 +1,5 @@
+{
+  "name": "Minecraft - Vibe Edition",
+  "description": "A Three.js voxel survival game ported to Angular. Gather resources, craft tools, and build your world.",
+  "requestFramePermissions": []
+}

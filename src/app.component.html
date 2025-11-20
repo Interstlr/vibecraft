@@ -1,0 +1,7 @@
+
+@if (!store.isGameStarted()) {
+  <app-main-menu></app-main-menu>
+} @else {
+  <app-game-scene></app-game-scene>
+  <app-game-ui (requestLock)="onRequestLock()"></app-game-ui>
+}
