@@ -35,7 +35,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   
   // --- Instanced Rendering ---
   private instancedMeshes = new Map<string, THREE.InstancedMesh>();
-  private readonly MAX_INSTANCES = 10000; // Reduced for safety, but efficient count mgmt makes this flexible
+  private readonly MAX_INSTANCES = Math.max(10000, WORLD_CONFIG.size * WORLD_CONFIG.size * 6);
   private nextInstanceIndex = new Map<string, number>();
   private freeInstanceIndices = new Map<string, number[]>();
 
