@@ -777,6 +777,27 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.addBlock(x, y, z, newType);
   }
 
+  private chopTreeColumn(x: number, y: number, z: number): number {
+    const ix = Math.round(x);
+    const iz = Math.round(z);
+    let removed = 0;
+    let currentY = Math.round(y);
+
+    while (true) {
+      const key = `${ix},${currentY},${iz}`;
+      const block = this.blockData.get(key);
+      if (!block || block.type !== 'wood') {
+        break;
+      }
+
+      this.removeBlock(ix, currentY, iz);
+      removed++;
+      currentY++;
+    }
+
+    return removed;
+  }
+
   // --- Game Loop ---
 
   private animate() {
@@ -995,9 +1016,15 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
         if (this.miningTimer >= baseSpeed) {
            // Add to inventory
-           this.store.addToInventory(block.type, 1);
-           
-           this.removeBlock(this.hitBlockPosition.x, this.hitBlockPosition.y, this.hitBlockPosition.z);
+           if (block.type === 'wood') {
+             const removed = this.chopTreeColumn(this.hitBlockPosition.x, this.hitBlockPosition.y, this.hitBlockPosition.z);
+             if (removed > 0) {
+               this.store.addToInventory('wood', removed);
+             }
+           } else {
+             this.store.addToInventory(block.type, 1);
+             this.removeBlock(this.hitBlockPosition.x, this.hitBlockPosition.y, this.hitBlockPosition.z);
+           }
            this.stopMining();
         }
       } else {
