@@ -1,5 +1,6 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import * as THREE from 'three';
 import { WorldBuilder } from '../services/tree-generator.service';
 import { WorldGeneratorService } from '../services/world-generator.service';
 import { SceneManagerService } from '../game/core/scene-manager.service';
@@ -13,6 +14,8 @@ import { BlockPlacerService } from '../game/world/block-placer.service';
 import { GameLoopService } from '../game/core/game-loop.service';
 import { SkyRendererService } from '../game/rendering/sky-renderer.service';
 import { PlayerControllerService } from '../game/player/player-controller.service';
+import { ChickenRendererService } from '../game/rendering/chicken-renderer.service';
+import { ChickenSystemService } from '../game/systems/chicken-system.service';
 
 @Component({
   selector: 'app-game-scene',
@@ -35,6 +38,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private gameLoop = inject(GameLoopService);
   private skyRenderer = inject(SkyRendererService);
   private playerController = inject(PlayerControllerService);
+  private chickenRenderer = inject(ChickenRendererService);
+  private chickenSystem = inject(ChickenSystemService);
 
   ngAfterViewInit() {
     const container = this.rendererContainer.nativeElement;
@@ -45,6 +50,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.toolRenderer.initialize();
     this.blockPlacer.initialize();
     this.skyRenderer.initialize();
+    this.chickenRenderer.initialize();
     this.playerController.setSpawn(this.sceneManager.getCamera().position.clone());
 
     this.inputManager.initialize({
@@ -55,6 +61,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
     this.generateWorld();
     this.gameLoop.start();
+
+    this.chickenSystem.spawnChicken(new THREE.Vector3(1, 10, -3));
   }
 
   ngOnDestroy() {

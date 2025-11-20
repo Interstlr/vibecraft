@@ -30,6 +30,7 @@ export interface BlockDefinition {
     isTool?: boolean;
     drops?: { item: string; count: number };
     maxStack?: number;
+    tick?: boolean;
 }
 
 export const BLOCKS: Record<string, BlockDefinition> = {

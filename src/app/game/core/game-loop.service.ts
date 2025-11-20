@@ -13,6 +13,8 @@ import { ItemDropSystemService } from '../systems/item-drop-system.service';
 import { ItemDropRendererService } from '../rendering/item-drop-renderer.service';
 import { InventoryStackService } from '../inventory/inventory-stack.service';
 import { InventoryInitService } from '../inventory/inventory-init.service';
+import { ChickenSystemService } from '../systems/chicken-system.service';
+import { ChickenRendererService } from '../rendering/chicken-renderer.service';
 
 @Injectable({
   providedIn: 'root',
@@ -37,7 +39,9 @@ export class GameLoopService {
     private itemDropRenderer: ItemDropRendererService,
     private inventoryStackService: InventoryStackService,
     // Inject init service to ensure it runs
-    private inventoryInit: InventoryInitService
+    private inventoryInit: InventoryInitService,
+    private chickenSystem: ChickenSystemService,
+    private chickenRenderer: ChickenRendererService
   ) {}
 
   start() {
@@ -83,6 +87,9 @@ export class GameLoopService {
       }
     });
     this.itemDropRenderer.update(this.itemDropSystem.getDrops(), this.playerController.position, time / 1000);
+
+    this.chickenSystem.update(delta);
+    this.chickenRenderer.update(this.chickenSystem.getChickens(), delta);
 
     if (this.input.isLocked()) {
       this.playerController.update(delta);
