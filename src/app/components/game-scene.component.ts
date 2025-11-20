@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { GameStateService } from '../services/game-state.service';
 import { MaterialService } from '../services/material.service';
+import { WorldBuilder } from '../services/tree-generator.service';
+import { WorldGeneratorService } from '../services/world-generator.service';
 import { PLAYER_CONFIG } from '../config/player.config';
 import { WORLD_CONFIG } from '../config/world.config';
 
@@ -23,6 +25,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   
   store = inject(GameStateService);
   materials = inject(MaterialService);
+  worldGenerator = inject(WorldGeneratorService);
 
   // --- Three.js Variables ---
   private camera!: THREE.PerspectiveCamera;
@@ -208,25 +211,13 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   }
 
   private generateWorld() {
-    const size = WORLD_CONFIG.size;
-    const halfSize = size / 2;
+    // Create a WorldBuilder context for external generators
+    const worldBuilder: WorldBuilder = {
+      addBlock: (x, y, z, type) => this.addBlock(x, y, z, type),
+      hasBlock: (x, y, z) => this.blockData.has(`${x},${y},${z}`)
+    };
 
-    for (let x = -halfSize; x < halfSize; x++) {
-      for (let z = -halfSize; z < halfSize; z++) {
-        let y = 0;
-        if (Math.random() < WORLD_CONFIG.hillFrequency) y = 1;
-        
-        this.addBlock(x, y, z, 'grass');
-        if(y > 0) this.addBlock(x, y-1, z, 'dirt');
-        
-        if (x > -5 && x < 5 && z > -5 && z < 5) {
-          // spawn area clear
-        } else if (Math.random() < WORLD_CONFIG.treeDensity) {
-          this.createTree(x, y + 1, z);
-        }
-      }
-    }
-    this.createHouse(5, 1, 5);
+    this.worldGenerator.generate(worldBuilder);
     
     // IMPORTANT: Only update used counts once after generation
     this.instancedMeshes.forEach((mesh, type) => {
@@ -234,46 +225,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         mesh.count = nextIndex;
         mesh.instanceMatrix.needsUpdate = true;
     });
-  }
-
-  private createTree(x: number, y: number, z: number) {
-    const height = 4 + Math.floor(Math.random() * 2);
-    for(let i=0; i<height; i++) {
-      this.addBlock(x, y+i, z, 'wood');
-    }
-    const leafStart = y + height - 2;
-    for(let lx = x-2; lx <= x+2; lx++) {
-      for(let lz = z-2; lz <= z+2; lz++) {
-        for(let ly = leafStart; ly <= leafStart + 2; ly++) {
-          if (Math.abs(lx-x) + Math.abs(lz-z) + Math.abs(ly-leafStart-1) <= 3) {
-             if(!this.blockData.has(`${lx},${ly},${lz}`)) {
-                 this.addBlock(lx, ly, lz, 'leaves');
-             }
-          }
-        }
-      }
-    }
-  }
-
-  private createHouse(startX: number, startY: number, startZ: number) {
-    const width = 6, depth = 6, height = 4;
-    for(let x = 0; x < width; x++) {
-      for(let z = 0; z < depth; z++) {
-        for(let y = 0; y < height; y++) {
-          if(x === 0 || x === width - 1 || z === 0 || z === depth - 1) {
-            if(x === Math.floor(width/2) && z === 0 && y < 2) continue; 
-            if(x === 0 && z === Math.floor(depth/2) && y === 1) continue; 
-            if(x === width - 1 && z === Math.floor(depth/2) && y === 1) continue;
-            this.addBlock(startX + x, startY + y, startZ + z, 'wood');
-          }
-        }
-      }
-    }
-    for(let x = 0; x < width; x++) {
-      for(let z = 0; z < depth; z++) {
-        this.addBlock(startX + x, startY + height, startZ + z, 'wood');
-      }
-    }
   }
 
   // --- Block Logic (Instanced) ---

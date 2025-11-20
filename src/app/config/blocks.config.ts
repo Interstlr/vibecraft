@@ -45,10 +45,16 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         }
     },
     dirt: {
-        procedural: {
-            type: 'noise',
-            color1: '#795548',
-            color2: '#5d4037'
+        faces: {
+            side: {
+                texture: 'assets/textures/dirt.png',
+            },
+            top: {
+                texture: 'assets/textures/dirt.png',
+            },
+            bottom: {
+                texture: 'assets/textures/dirt.png',
+            }
         }
     },
     stone: {
