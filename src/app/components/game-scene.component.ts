@@ -58,6 +58,9 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private handGroup!: THREE.Group;
   private isSwinging = false;
 
+  // Sky Elements
+  private sunMesh!: THREE.Mesh;
+
   // Interaction
   private outlineMesh!: THREE.LineSegments;
   private hitBlockPosition: THREE.Vector3 | null = null; 
@@ -115,6 +118,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     dirLight.position.set(50, 100, 50);
     // Shadows disabled to prevent artifacts
     this.scene.add(dirLight);
+    this.createSun(dirLight.position.clone());
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
@@ -236,6 +240,25 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.camera.add(this.handGroup);
   }
 
+  private createSun(direction: THREE.Vector3) {
+    const normalizedDirection = direction.lengthSq() > 0 ? direction.normalize() : new THREE.Vector3(0.5, 1, 0.5).normalize();
+    const sunDistance = 120;
+    const sunGeometry = new THREE.PlaneGeometry(32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xfff4c1,
+      transparent: true,
+      opacity: 0.98,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      depthTest: true,
+      fog: false
+    });
+
+    this.sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+    this.sunMesh.position.copy(normalizedDirection.multiplyScalar(sunDistance));
+    this.scene.add(this.sunMesh);
+  }
+
   private getInventoryCountForSlot(slot: number): number {
     switch (slot) {
       case 1: return this.store.grassCount();
@@ -340,6 +363,10 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       this.performRaycast(); // DDA Raycaster (Fast)
       this.handleInteraction(delta);
       this.handleAnimations(time, delta);
+    }
+
+    if (this.sunMesh) {
+      this.sunMesh.lookAt(this.camera.position);
     }
 
     this.renderer.render(this.scene, this.camera);
