@@ -57,6 +57,13 @@ export const BLOCKS: Record<string, BlockDefinition> = {
             }
         }
     },
+    water: {
+        procedural: {
+            type: 'flat',
+            color1: '#4FC3F7'
+        },
+        transparent: true
+    },
     stone: {
         procedural: {
             type: 'noise',

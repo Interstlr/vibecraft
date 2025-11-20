@@ -1,79 +1,118 @@
 import { Injectable, inject } from '@angular/core';
 import { WORLD_CONFIG } from '../config/world.config';
 import { TreeGeneratorService, WorldBuilder } from './tree-generator.service';
+import { RiverGeneratorService } from './river-generator.service';
+import { TerrainCell, TerrainMap } from './world/terrain-map';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WorldGeneratorService {
   private treeGenerator = inject(TreeGeneratorService);
+  private riverGenerator = inject(RiverGeneratorService);
+  private readonly spawnSafeRadius = WORLD_CONFIG.spawnSafeRadius ?? 12;
 
   generate(world: WorldBuilder) {
-    const size = WORLD_CONFIG.size;
-    const halfSize = size / 2;
-    
-    // Seed for randomness
     const seed = Math.random() * 10000;
+    const terrainMap = this.generateTerrainMap(seed);
+    this.carveRivers(terrainMap);
+    this.buildTerrain(terrainMap, world);
+    this.createHouse(8, 1, 8, world);
+  }
+
+  private generateTerrainMap(seed: number): TerrainMap {
+    const map = new TerrainMap(WORLD_CONFIG.size, this.spawnSafeRadius);
+    const halfSize = WORLD_CONFIG.size / 2;
 
     for (let x = -halfSize; x < halfSize; x++) {
       for (let z = -halfSize; z < halfSize; z++) {
-        
-        // 1. Calculate Height (Hills)
-        // Use combination of sine waves for terrain
-        const nx = (x + seed) * 0.05;
-        const nz = (z + seed) * 0.05;
-        
-        // Base terrain noise
-        let heightNoise = Math.sin(nx) * Math.cos(nz) + 
-                          Math.sin(nx * 0.5) * Math.cos(nz * 0.5) * 2;
-        
-        // Normalize somewhat and scale
-        let y = Math.floor(Math.max(0, heightNoise * 2 + 1));
-        
-        // Flatten spawn area (radius 10)
-        const distToCenter = Math.sqrt(x*x + z*z);
-        if (distToCenter < 10) {
-            y = 0;
-        }
-
-        // 2. Calculate Biome (Forest vs Plains)
-        // Different frequency for biomes
-        const bx = (x + seed) * 0.02;
-        const bz = (z + seed) * 0.02;
-        const biomeNoise = Math.sin(bx) * Math.cos(bz); // -1 to 1
-        
-        const isForest = biomeNoise > 0; // Positive noise = Forest, Negative = Plains
-        
-        // 3. Fill column
-        // Top block is grass, below is dirt
-        world.addBlock(x, y, z, 'grass');
-        
-        // Fill dirt/stone below
-        for (let d = y - 1; d >= -2; d--) {
-            world.addBlock(x, d, z, 'dirt');
-        }
-
-        // 4. Vegetation (Trees)
-        // Only place trees on grass
-        if (distToCenter > 10) { // Don't spawn trees in immediate spawn
-            if (isForest) {
-                // Higher density in forest
-                if (Math.random() < 0.08) { // 8% chance in forest
-                    this.treeGenerator.generate(x, y + 1, z, world);
-                }
-            } else {
-                // Very low density in plains (rare isolated trees)
-                if (Math.random() < 0.005) { // 0.5% chance in plains
-                    this.treeGenerator.generate(x, y + 1, z, world);
-                }
-            }
-        }
+        map.setCell(this.createCell(x, z, seed));
       }
     }
 
-    // Place house near spawn but on surface
-    // We know spawn (0,0) is at y=0 because we flattened it.
-    this.createHouse(8, 1, 8, world);
+    return map;
+  }
+
+  private createCell(x: number, z: number, seed: number): TerrainCell {
+    const distanceToCenter = Math.sqrt(x * x + z * z);
+
+    return {
+      x,
+      z,
+      height: this.sampleHeight(x, z, seed, distanceToCenter),
+      biome: this.sampleBiome(x, z, seed),
+      surface: 'grass',
+      waterDepth: 0,
+      distanceToCenter
+    };
+  }
+
+  private sampleHeight(x: number, z: number, seed: number, distanceToCenter: number): number {
+    const nx = (x + seed) * 0.05;
+    const nz = (z + seed) * 0.05;
+    const heightNoise = Math.sin(nx) * Math.cos(nz) +
+                        Math.sin(nx * 0.5) * Math.cos(nz * 0.5) * 2;
+
+    let y = Math.floor(Math.max(0, heightNoise * 2 + 1));
+    if (distanceToCenter < this.spawnSafeRadius) {
+      y = 0;
+    }
+
+    return y;
+  }
+
+  private sampleBiome(x: number, z: number, seed: number): 'forest' | 'plains' {
+    const bx = (x + seed) * 0.02;
+    const bz = (z + seed) * 0.02;
+    const biomeNoise = Math.sin(bx) * Math.cos(bz);
+    return biomeNoise > 0 ? 'forest' : 'plains';
+  }
+
+  private carveRivers(map: TerrainMap) {
+    const config = WORLD_CONFIG.rivers ?? { count: 2, width: 2 };
+    this.riverGenerator.carveRivers(map, config);
+  }
+
+  private buildTerrain(map: TerrainMap, world: WorldBuilder) {
+    map.forEach(cell => {
+      if (cell.surface === 'water') {
+        this.buildWaterColumn(cell, world);
+      } else {
+        this.buildLandColumn(cell, world);
+        this.trySpawnTree(cell, world);
+      }
+    });
+  }
+
+  private buildLandColumn(cell: TerrainCell, world: WorldBuilder) {
+    world.addBlock(cell.x, cell.height, cell.z, 'grass');
+    for (let y = cell.height - 1; y >= -2; y--) {
+      world.addBlock(cell.x, y, cell.z, 'dirt');
+    }
+  }
+
+  private buildWaterColumn(cell: TerrainCell, world: WorldBuilder) {
+    const depth = Math.max(1, cell.waterDepth);
+    const waterBase = cell.height;
+    const waterTop = waterBase + depth - 1;
+
+    for (let y = waterBase; y <= waterTop; y++) {
+      world.addBlock(cell.x, y, cell.z, 'water');
+    }
+
+    for (let y = Math.max(waterBase - 1, -2); y >= -2; y--) {
+      world.addBlock(cell.x, y, cell.z, 'dirt');
+    }
+  }
+
+  private trySpawnTree(cell: TerrainCell, world: WorldBuilder) {
+    if (cell.surface !== 'grass') return;
+    if (cell.distanceToCenter <= this.spawnSafeRadius) return;
+
+    const spawnChance = cell.biome === 'forest' ? 0.08 : 0.005;
+    if (Math.random() < spawnChance) {
+      this.treeGenerator.generate(cell.x, cell.height + 1, cell.z, world);
+    }
   }
 
   private createHouse(startX: number, startY: number, startZ: number, world: WorldBuilder) {
