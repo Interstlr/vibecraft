@@ -98,10 +98,37 @@ export class PlayerInteractionService {
     }
 
     const target = hitPos.clone().add(normal);
-    const playerPos = this.sceneManager.getCamera().position.clone();
-    playerPos.y -= PLAYER_CONFIG.eyeHeight;
+    
+    // Check collision with player
+    const playerPos = this.sceneManager.getCamera().position;
+    const playerFeetY = playerPos.y - PLAYER_CONFIG.eyeHeight;
+    const playerRadius = PLAYER_CONFIG.collisionRadius; // 0.3
+    const playerHeight = 1.7; // Approx height
 
-    if (target.distanceTo(playerPos) <= 1.2) {
+    // Block AABB
+    const blockMinX = target.x - 0.5;
+    const blockMaxX = target.x + 0.5;
+    const blockMinY = target.y - 0.5;
+    const blockMaxY = target.y + 0.5;
+    const blockMinZ = target.z - 0.5;
+    const blockMaxZ = target.z + 0.5;
+
+    // Player AABB
+    const playerMinX = playerPos.x - playerRadius;
+    const playerMaxX = playerPos.x + playerRadius;
+    const playerMinY = playerFeetY;
+    const playerMaxY = playerFeetY + playerHeight;
+    const playerMinZ = playerPos.z - playerRadius;
+    const playerMaxZ = playerPos.z + playerRadius;
+
+    // Intersection check
+    const intersects = (
+        playerMinX < blockMaxX && playerMaxX > blockMinX &&
+        playerMinY < blockMaxY && playerMaxY > blockMinY &&
+        playerMinZ < blockMaxZ && playerMaxZ > blockMinZ
+    );
+
+    if (intersects) {
       return;
     }
 

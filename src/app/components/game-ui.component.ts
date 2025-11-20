@@ -4,6 +4,7 @@ import { GameStateService } from '../services/game-state.service';
 import { InventoryService } from '../game/inventory/inventory.service';
 import { InventoryUiComponent } from './inventory-ui.component';
 import { BLOCKS } from '../config/blocks.config';
+import { GAME_CONFIG } from '../config/game.config';
 
 @Component({
   selector: 'app-game-ui',
@@ -22,6 +23,11 @@ import { BLOCKS } from '../config/blocks.config';
       <h2 class="m-0 mt-0 font-bold">Voxel Survival</h2>
       <p>FPS: {{ store.fps() }}</p>
       <p>Blocks: {{ store.blockCount() }}</p>
+    </div>
+
+    <!-- Version Display -->
+    <div class="absolute bottom-1 left-1 text-white/40 text-xs font-mono pointer-events-none select-none z-50">
+      {{ config.version }}
     </div>
 
     <!-- Hotbar -->
@@ -68,6 +74,7 @@ export class GameUiComponent {
   store = inject(GameStateService);
   inventoryService = inject(InventoryService);
   requestLock = output<void>();
+  readonly config = GAME_CONFIG;
 
   getSlotColor(item: string | null): string {
     if (!item) return 'transparent';

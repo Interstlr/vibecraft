@@ -1,5 +1,6 @@
 
 export const GAME_CONFIG = {
+  version: 'v0.01',
   player: {
     // Movement Physics
     moveSpeed: 65.0,      // Acceleration force
