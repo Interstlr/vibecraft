@@ -28,10 +28,12 @@ export interface BlockDefinition {
 
     transparent?: boolean;
     isTool?: boolean;
+    drops?: { item: string; count: number };
 }
 
 export const BLOCKS: Record<string, BlockDefinition> = {
     grass: {
+        drops: { item: 'dirt', count: 1 },
         faces: {
             side: {
                 texture: 'assets/textures/grass-side.webp',
@@ -45,6 +47,7 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         }
     },
     dirt: {
+        drops: { item: 'dirt', count: 1 },
         faces: {
             side: {
                 texture: 'assets/textures/dirt.png',
@@ -65,6 +68,7 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         transparent: true
     },
     stone: {
+        drops: { item: 'stone', count: 1 },
         procedural: {
             type: 'noise',
             color1: '#9e9e9e',
@@ -72,6 +76,7 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         }
     },
     wood: {
+        drops: { item: 'wood', count: 1 },
         // Top/Bottom defaults
         // procedural: {
         //     type: 'wood_side', // Actually the top of wood is usually concentric rings but we use side pattern for simplicity in original or specific colors

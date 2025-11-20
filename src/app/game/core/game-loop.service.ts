@@ -8,6 +8,8 @@ import { ToolRendererService } from '../rendering/tool-renderer.service';
 import { GrassSystemService } from '../systems/grass-system.service';
 import { SkyRendererService } from '../rendering/sky-renderer.service';
 import { GameStateService } from '../../services/game-state.service';
+import { ItemDropSystemService } from '../systems/item-drop-system.service';
+import { ItemDropRendererService } from '../rendering/item-drop-renderer.service';
 
 @Injectable({
   providedIn: 'root',
@@ -27,6 +29,8 @@ export class GameLoopService {
     private grassSystem: GrassSystemService,
     private skyRenderer: SkyRendererService,
     private store: GameStateService,
+    private itemDropSystem: ItemDropSystemService,
+    private itemDropRenderer: ItemDropRendererService,
   ) {}
 
   start() {
@@ -35,6 +39,10 @@ export class GameLoopService {
     }
     this.running = true;
     this.prevTime = performance.now();
+
+    // Initialize item drop renderer
+    this.itemDropRenderer.initialize();
+
     this.animate();
   }
 
@@ -57,6 +65,18 @@ export class GameLoopService {
       this.store.fps.set(Math.round(1 / delta));
     }
 
+    // Update item drops logic and rendering
+    const pickedUpIds = this.itemDropSystem.update(delta, this.playerController.position);
+    pickedUpIds.forEach((id) => {
+      const drop = this.itemDropSystem.getDropById(id);
+      if (drop) {
+        this.store.addToInventory(drop.type, 1);
+        this.itemDropRenderer.removeDrop(id);
+        this.itemDropSystem.removeDrop(id);
+      }
+    });
+    this.itemDropRenderer.update(this.itemDropSystem.getDrops(), this.playerController.position, time / 1000);
+
     if (this.input.isLocked()) {
       this.playerController.update(delta);
       this.playerRaycaster.update();
@@ -71,4 +91,3 @@ export class GameLoopService {
     this.sceneManager.render();
   };
 }
-

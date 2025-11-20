@@ -21,6 +21,10 @@ export class PlayerControllerService {
     private blockPlacer: BlockPlacerService,
   ) {}
 
+  get position(): THREE.Vector3 {
+    return this.sceneManager.getCamera().position;
+  }
+
   setSpawn(position: THREE.Vector3) {
     this.spawnPosition.copy(position);
   }
@@ -151,4 +155,3 @@ export class PlayerControllerService {
     this.canJump = true;
   }
 }
-

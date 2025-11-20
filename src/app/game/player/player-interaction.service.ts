@@ -7,6 +7,9 @@ import { ToolRendererService } from '../rendering/tool-renderer.service';
 import { SceneManagerService } from '../core/scene-manager.service';
 import { PLAYER_CONFIG } from '../../config/player.config';
 import { InputManagerService } from '../core/input-manager.service';
+import { ItemDropSystemService } from '../systems/item-drop-system.service';
+import { BLOCKS } from '../../config/blocks.config';
+import * as THREE from 'three';
 
 @Injectable({
   providedIn: 'root',
@@ -32,6 +35,7 @@ export class PlayerInteractionService {
     private toolRenderer: ToolRendererService,
     private sceneManager: SceneManagerService,
     private input: InputManagerService,
+    private itemDropSystem: ItemDropSystemService,
   ) {}
 
   handlePrimaryActionDown() {
@@ -136,22 +140,18 @@ export class PlayerInteractionService {
 
     if (this.miningTimer >= baseSpeed) {
       if (block.type === 'wood') {
-        const removed = this.chopTreeColumn(hitPos.x, hitPos.y, hitPos.z);
-        if (removed > 0) {
-          this.store.addToInventory('wood', removed);
-        }
+        this.chopTreeColumn(hitPos.x, hitPos.y, hitPos.z);
       } else {
-        this.store.addToInventory(block.type, 1);
+        this.spawnBlockDrop(hitPos.x, hitPos.y, hitPos.z, block.type);
         this.blockPlacer.removeBlock(hitPos.x, hitPos.y, hitPos.z);
       }
       this.stopMining();
     }
   }
 
-  private chopTreeColumn(x: number, y: number, z: number): number {
+  private chopTreeColumn(x: number, y: number, z: number) {
     const ix = Math.round(x);
     const iz = Math.round(z);
-    let removed = 0;
     let currentY = Math.round(y);
 
     while (true) {
@@ -159,12 +159,20 @@ export class PlayerInteractionService {
       if (!block || block.type !== 'wood') {
         break;
       }
+      this.spawnBlockDrop(ix, currentY, iz, 'wood');
       this.blockPlacer.removeBlock(ix, currentY, iz);
-      removed++;
       currentY++;
     }
+  }
 
-    return removed;
+  private spawnBlockDrop(x: number, y: number, z: number, type: string) {
+    const blockDef = BLOCKS[type];
+    const dropItem = blockDef?.drops?.item ?? type;
+    const dropCount = blockDef?.drops?.count ?? 1;
+
+    for (let i = 0; i < dropCount; i++) {
+      this.itemDropSystem.spawnDrop(dropItem, new THREE.Vector3(x + 0.5, y + 0.5, z + 0.5));
+    }
   }
 
   private stopMining() {
@@ -177,4 +185,3 @@ export class PlayerInteractionService {
     return `${x},${y},${z}`;
   }
 }
-
