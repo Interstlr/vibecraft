@@ -974,7 +974,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       if (block) {
         if (this.crackBlockKey && this.crackBlockKey !== key) {
           this.miningTimer = 0;
-          this.store.miningProgress.set(0);
           this.currentCrackStage = -1;
         }
 
@@ -985,8 +984,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
         this.miningTimer += delta;
         const miningRatio = Math.min(1, this.miningTimer / baseSpeed);
-        const percentage = Math.min(100, miningRatio * 100);
-        this.store.miningProgress.set(percentage);
         this.showCrackOverlay(this.hitBlockPosition, miningRatio);
 
         if (this.miningTimer >= baseSpeed) {
@@ -1128,7 +1125,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private stopMining() {
     this.isMining = false;
     this.miningTimer = 0;
-    this.store.miningProgress.set(0);
     this.hideCrackOverlay();
   }
 

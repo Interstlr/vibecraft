@@ -29,10 +29,6 @@ export class GameStateService {
   activeMenu = signal<'none' | 'crafting' | 'workbench'>('none');
   showInstructions = signal(true);
   
-  // --- Mining State ---
-  miningProgress = signal(0);
-  isMiningVisible = computed(() => this.miningProgress() > 0);
-
   // --- Derived State ---
   selectedBlockName = computed(() => {
     const slot = this.selectedSlot();

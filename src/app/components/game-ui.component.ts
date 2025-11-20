@@ -14,13 +14,6 @@ import { GameStateService } from '../services/game-state.service';
       </svg>
     </div>
 
-    <!-- Mining Bar -->
-    @if (store.isMiningVisible()) {
-      <div class="absolute top-[53%] left-1/2 -translate-x-1/2 w-[100px] h-[6px] bg-black/50 border border-white z-[9]">
-        <div class="h-full bg-lime-500 transition-all duration-75 ease-linear" [style.width.%]="store.miningProgress()"></div>
-      </div>
-    }
-
     <!-- Top Left Stats -->
     <div class="absolute top-5 left-5 text-white bg-black/50 p-4 rounded-lg pointer-events-none select-none">
       <h2 class="m-0 mt-0 font-bold">Voxel Survival</h2>
