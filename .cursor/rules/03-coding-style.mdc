@@ -1,0 +1,13 @@
+---
+description: Кодстайл проекта
+alwaysApply: true
+---
+
+- Всё на английском
+- camelCase для переменных/методов, PascalCase для классов/сервисов
+- Файлы: kebab-case.ts
+- InstancedMesh всегда, никогда один Mesh на блок
+- Координаты блоков: number, не Vector3 в Map ключах
+- blockData: Map<`${x},${y},${z}`, {type: string, instanceId: number}>
+- Никаких console.log → используй debug-service с флагом
+- Любой новый функционал — через сервисы в src/app/game/

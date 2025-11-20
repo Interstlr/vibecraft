@@ -144,6 +144,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private readonly GRASS_TICK_INTERVAL = 0.75;
   private readonly GRASS_TICK_ATTEMPTS = 40;
   private readonly GRASS_LIGHT_SCAN_HEIGHT = 6;
+  private spawnPosition = new THREE.Vector3(0, 10, 0);
+  private readonly MIN_WORLD_Y = -20;
   
   // Movement
   private moveForward = false;
@@ -209,6 +211,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.camera.position.y = 10;
+    this.spawnPosition.copy(this.camera.position);
     this.scene.add(this.camera);
 
     // Lights
@@ -551,6 +554,12 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     return !this.blockData.has(`${x},${y},${z}`);
   }
 
+  private resetPlayerPosition() {
+    this.camera.position.copy(this.spawnPosition);
+    this.velocity.set(0, 0, 0);
+    this.canJump = true;
+  }
+
   private getTransformedPattern(pattern: string[], rng: () => number): boolean[][] {
     let matrix = this.patternToBooleanMatrix(pattern);
     const rotateSteps = Math.floor(rng() * 4);
@@ -840,10 +849,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    if (cam.position.y < PLAYER_CONFIG.eyeHeight) { 
-      this.velocity.y = 0;
-      cam.position.y = PLAYER_CONFIG.eyeHeight;
-      this.canJump = true;
+    if (cam.position.y < this.MIN_WORLD_Y) {
+      this.resetPlayerPosition();
     }
   }
 

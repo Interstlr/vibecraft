@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+description: Блоки = данные, никаких классов на каждый блок
+alwaysApply: true
+priority: 900
+---
+
+# БЛОКИ — ТОЛЬКО ДАННЫЕ
+
+Новый блок = одна строка в src/app/game/config/blocks.config.ts
+
+Пример:
+export const BLOCKS = {
+  grass:     { id: 1,  hardness: 0.6, drops: 'dirt',     tick: true },
+  stone:     { id: 3,  hardness: 1.5, drops: 'cobble' },
+  sunflower: { id: 38, hardness: 0,   drops: 'sunflower', facesSun: true, transparent: true },
+  lantern:   { id: 101,hardness: 3.5, drops: 'lantern',   lightLevel: 15 },
+} as const;
+
+Запрещено навсегда:
+- class GrassBlock extends Block { }
+- 50 файлов BlockStone.ts, BlockDirt.ts и т.д.
+
+Если блоку нужно поведение → отдельный System в systems/, а не класс блока.

@@ -1,0 +1,42 @@
+---
+description: ГЛАВНАЯ АРХИТЕКТУРА ПРОЕКТА — НАРУШЕНИЕ ЗАПРЕЩЕНО
+globs: ["**/*.ts"]
+alwaysApply: true
+priority: 999
+---
+
+# ФИНАЛЬНАЯ АРХИТЕКТУРА MINECRAFT-КЛОНА 2025
+
+src/app/game/
+├── core/
+│   ├── game-loop.service.ts          → requestAnimationFrame + delta
+│   ├── scene-manager.service.ts      → scene, camera, renderer, lights, fog, sun
+│   └── input-manager.service.ts      → все @HostListener + PointerLock
+│
+├── player/
+│   ├── player-controller.service.ts  → физика, гравитация, коллизии
+│   ├── player-raycaster.service.ts   → DDA-рейкаст + подсветка блока
+│   └── player-interaction.service.ts → копание, постановка блоков
+│
+├── rendering/
+│   ├── instanced-renderer.service.ts → InstancedMesh + add/remove instance
+│   ├── highlight-renderer.service.ts → чёрная обводка
+│   ├── crack-overlay.service.ts      → трещины при копании
+│   ├── tool-renderer.service.ts      → рука + топор + анимация свинга
+│   └── sky-renderer.service.ts
+│
+├── world/
+│   ├── block-placer.service.ts       → addBlock/removeBlock/replaceBlock + blockData Map
+│   └── chunk/ (будущее)              → когда перейдёшь на чанки
+│
+├── systems/
+│   ├── grass-system.service.ts       → spread и изменение dirt ↔ grass
+│   ├── mining-system.service.ts      → скорость копания, звук, дроп
+│   └── flower-system.service.ts      → подсолнухи поворачиваются к солнцу и т.д.
+│
+└── config/
+    └── blocks.config.ts              → ВСЕ свойства блоков здесь (hardness, drops, lightLevel, tick: true …)
+
+GameSceneComponent ≤ 120 строк: только создаёт сервисы и запускает game-loop.
+
+Любое отклонение от этой структуры = стоп и рефакторинг.
