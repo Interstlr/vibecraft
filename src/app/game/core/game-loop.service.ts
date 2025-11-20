@@ -6,6 +6,7 @@ import { PlayerRaycasterService } from '../player/player-raycaster.service';
 import { PlayerInteractionService } from '../player/player-interaction.service';
 import { ToolRendererService } from '../rendering/tool-renderer.service';
 import { GrassSystemService } from '../systems/grass-system.service';
+import { LeavesSystemService } from '../systems/leaves-system.service';
 import { SkyRendererService } from '../rendering/sky-renderer.service';
 import { GameStateService } from '../../services/game-state.service';
 import { ItemDropSystemService } from '../systems/item-drop-system.service';
@@ -29,6 +30,7 @@ export class GameLoopService {
     private playerInteraction: PlayerInteractionService,
     private toolRenderer: ToolRendererService,
     private grassSystem: GrassSystemService,
+    private leavesSystem: LeavesSystemService,
     private skyRenderer: SkyRendererService,
     private store: GameStateService,
     private itemDropSystem: ItemDropSystemService,
@@ -92,6 +94,7 @@ export class GameLoopService {
     }
 
     this.grassSystem.update(delta);
+    this.leavesSystem.update(delta);
     this.skyRenderer.update();
     this.sceneManager.render();
   };

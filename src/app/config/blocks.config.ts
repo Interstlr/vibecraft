@@ -97,6 +97,7 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         },
     },
     leaves: {
+        tick: true,
         faces: {
             side: {
                 texture: 'assets/textures/leaves.webp',

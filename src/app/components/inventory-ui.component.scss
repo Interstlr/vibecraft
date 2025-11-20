@@ -25,6 +25,7 @@
   color: #404040;
   font-family: 'Courier New', Courier, monospace;
   font-weight: bold;
+  transform: scale(1.2);
 }
 
 .section-label {
@@ -120,7 +121,7 @@
   position: fixed;
   pointer-events: none;
   z-index: 3000;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(1.2);
   .item-icon {
      width: 40px;
      height: 40px;

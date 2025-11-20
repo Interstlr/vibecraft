@@ -7,16 +7,27 @@ export interface BlockInstance {
   instanceId: number;
 }
 
+export type BlockUpdateCallback = (x: number, y: number, z: number, type: string, action: 'add' | 'remove') => void;
+
 @Injectable({
   providedIn: 'root',
 })
 export class BlockPlacerService {
   private blockData = new Map<string, BlockInstance>();
+  private listeners: BlockUpdateCallback[] = [];
 
   constructor(
     private instancedRenderer: InstancedRendererService,
     private store: GameStateService,
   ) {}
+
+  onBlockUpdate(callback: BlockUpdateCallback) {
+    this.listeners.push(callback);
+  }
+
+  private notify(x: number, y: number, z: number, type: string, action: 'add' | 'remove') {
+    this.listeners.forEach(l => l(x, y, z, type, action));
+  }
 
   initialize() {
     this.blockData.clear();
@@ -34,6 +45,7 @@ export class BlockPlacerService {
     }
     this.blockData.set(key, { type, instanceId });
     this.store.blockCount.set(this.blockData.size);
+    this.notify(x, y, z, type, 'add');
     return true;
   }
 
@@ -46,6 +58,7 @@ export class BlockPlacerService {
     this.instancedRenderer.removeInstance(block.type, block.instanceId);
     this.blockData.delete(key);
     this.store.blockCount.set(this.blockData.size);
+    this.notify(x, y, z, block.type, 'remove');
     return block;
   }
 
