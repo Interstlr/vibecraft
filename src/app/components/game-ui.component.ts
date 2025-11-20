@@ -2,6 +2,28 @@ import { Component, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameStateService } from '../services/game-state.service';
 
+type InventoryItemKey = 'grass' | 'dirt' | 'stone' | 'wood' | 'leaves' | 'workbench' | 'axe';
+
+const INVENTORY_SLOT_DISPLAY: Record<InventoryItemKey, { label: string; color: string }> = {
+  grass: { label: 'Gr', color: '#5fa848' },
+  dirt: { label: 'Di', color: '#795548' },
+  stone: { label: 'St', color: '#757575' },
+  wood: { label: 'Wo', color: '#8D6E63' },
+  leaves: { label: 'Lv', color: '#2d5a27' },
+  workbench: { label: 'WB', color: '#B8860B' },
+  axe: { label: 'Ax', color: '#b71c1c' },
+};
+
+const INVENTORY_ROWS: (InventoryItemKey | null)[][] = [
+  ['grass', 'dirt', 'stone', 'wood', 'leaves', 'workbench', 'axe', null, null],
+  [null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null],
+];
+
+const HOTBAR_ROW: (InventoryItemKey | null)[] = ['grass', 'dirt', 'stone', 'wood', 'leaves', null, 'workbench', 'axe', null];
+const ARMOR_SLOT_LABELS = ['Helmet', 'Chest', 'Legs', 'Boots'];
+const CRAFTING_GRID_SLOTS = [0, 1, 2, 3];
+
 @Component({
   selector: 'app-game-ui',
   standalone: true,
@@ -19,12 +41,6 @@ import { GameStateService } from '../services/game-state.service';
       <h2 class="m-0 mt-0 font-bold">Voxel Survival</h2>
       <p>FPS: {{ store.fps() }}</p>
       <p>Blocks: {{ store.blockCount() }}</p>
-    </div>
-
-    <!-- Inventory Display (Simplified for now, main focus on Hotbar) -->
-    <div class="absolute top-5 right-5 text-white bg-black/50 p-4 rounded-lg select-none text-right hidden"> <!-- Hidden for now as hotbar shows counts -->
-      <h3 class="font-bold border-b border-white/30 mb-2">Resources</h3>
-      <p>Wood: {{ store.woodCount() }}</p>
     </div>
 
     <!-- Hotbar -->
@@ -109,18 +125,97 @@ import { GameStateService } from '../services/game-state.service';
       }
     </div>
 
-    <!-- Basic Crafting Menu (Press E) -->
-    @if (store.activeMenu() === 'crafting') {
-      <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/90 border-2 border-[#8D6E63] p-5 w-[300px] text-white text-center rounded-xl z-30 shadow-lg">
-        <span class="absolute top-1 right-3 cursor-pointer text-xl hover:text-red-400" (click)="handleClose()">×</span>
-        <h2 class="text-xl font-bold mb-4">Crafting</h2>
-        <div class="mb-4">
-          <p class="mb-2 text-sm text-gray-300">Requires: 4 Wood</p>
-          <button class="w-full py-2 px-4 bg-[#5fa848] text-white border-none cursor-pointer hover:bg-[#4a8538] disabled:bg-gray-600 disabled:cursor-not-allowed rounded transition-colors"
-                  [disabled]="store.woodCount() < 4"
-                  (click)="craftWorkbench()">
-            Craft Workbench
-          </button>
+    <!-- Inventory Menu -->
+    @if (store.activeMenu() === 'inventory') {
+      <div class="fixed inset-0 flex items-center justify-center bg-black/70 z-30">
+        <div class="relative w-[920px] bg-[#1a1f2e]/95 border-2 border-white/15 rounded-2xl p-8 text-white shadow-2xl">
+          <span class="absolute top-3 right-4 cursor-pointer text-3xl leading-none hover:text-red-400 transition-colors" (click)="handleClose()">×</span>
+          <h2 class="text-2xl font-bold tracking-wide mb-6">Inventory</h2>
+          <div class="flex gap-8 items-start">
+            <div class="flex flex-col gap-6">
+              <div>
+                <p class="uppercase text-xs tracking-widest text-white/60 mb-2">Armor</p>
+                <div class="flex flex-col gap-2">
+                  @for (slot of armorSlots; track slot) {
+                    <div class="w-16 h-16 rounded border border-white/20 bg-black/30 flex items-center justify-center text-xs text-white/60 select-none">
+                      {{ slot }}
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="w-32 h-48 border border-white/25 bg-gradient-to-b from-black/40 to-black/10 rounded relative">
+                <div class="absolute inset-x-4 bottom-6 h-28 bg-white/5 rounded"></div>
+                <span class="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs uppercase tracking-widest text-white/60">Player</span>
+              </div>
+            </div>
+            <div class="flex-1 space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <p class="uppercase text-xs tracking-widest text-white/60">Crafting</p>
+                  <span class="text-[11px] text-white/40">2 × 2 Grid</span>
+                </div>
+                <div class="flex items-center gap-4">
+                  <div class="grid grid-cols-2 gap-2">
+                    @for (slot of craftingGridSlots; track slot) {
+                      <div class="w-16 h-16 rounded border border-white/20 bg-black/40"></div>
+                    }
+                  </div>
+                  <div class="text-3xl text-white/50">→</div>
+                  <div class="w-20 h-20 rounded border-2 border-white/30 bg-black/40 flex items-center justify-center text-sm text-white/40">Result</div>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-3">
+                  <button class="px-4 py-2 rounded bg-[#5fa848] hover:bg-[#4a8538] disabled:bg-gray-600 disabled:cursor-not-allowed transition-all text-sm font-semibold tracking-wide"
+                          [disabled]="store.woodCount() < 4"
+                          (click)="craftWorkbench()">
+                    Craft Workbench
+                  </button>
+                  <button class="px-4 py-2 rounded bg-[#8D6E63] hover:bg-[#775544] disabled:bg-gray-600 disabled:cursor-not-allowed transition-all text-sm font-semibold tracking-wide"
+                          [disabled]="store.woodCount() < 3"
+                          (click)="craftAxe()">
+                    Craft Axe
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-3">
+                <p class="uppercase text-xs tracking-widest text-white/60">Inventory</p>
+                @for (row of inventoryRows; track $index) {
+                  <div class="grid grid-cols-9 gap-2">
+                    @for (slot of row; track $index) {
+                      <div class="relative w-14 h-14 rounded border border-white/15 bg-black/40">
+                        @if (slot && getItemCount(slot) > 0) {
+                          <div class="absolute inset-1 rounded-sm text-xs font-semibold text-white flex items-center justify-center"
+                               [style.background]="getSlotColor(slot)">
+                            {{ getSlotLabel(slot) }}
+                            <span class="absolute bottom-0.5 right-1 text-[10px] font-bold drop-shadow">{{ getItemCount(slot) }}</span>
+                          </div>
+                        } @else {
+                          <div class="absolute inset-1 rounded-sm border border-white/10"></div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="space-y-2">
+                <p class="uppercase text-xs tracking-widest text-white/60">Hotbar</p>
+                <div class="grid grid-cols-9 gap-2">
+                  @for (slot of hotbarRow; track $index) {
+                    <div class="relative w-14 h-14 rounded border border-white/20 bg-black/50">
+                      @if (slot && getItemCount(slot) > 0) {
+                        <div class="absolute inset-1 rounded-sm flex items-center justify-center text-xs font-semibold text-white"
+                             [style.background]="getSlotColor(slot)">
+                          {{ getSlotLabel(slot) }}
+                          <span class="absolute bottom-0.5 right-1 text-[10px] font-bold">{{ getItemCount(slot) }}</span>
+                        </div>
+                      } @else {
+                        <div class="absolute inset-1 rounded-sm border border-white/10"></div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     }
@@ -149,7 +244,7 @@ import { GameStateService } from '../services/game-state.service';
         <div class="text-center space-y-2 text-lg font-mono bg-black/50 p-6 rounded-xl border border-white/20">
           <p>WASD - Move | SPACE - Jump</p>
           <p>LMB (Hold) - Mine | RMB - Build/Interact</p>
-          <p>E - Crafting Menu</p>
+          <p>E - Inventory</p>
           <p>1-5 - Select Block | 8 - Workbench | 9 - Axe</p>
         </div>
       </div>
@@ -160,6 +255,10 @@ export class GameUiComponent {
   store = inject(GameStateService);
   requestLock = output<void>();
   requestUnlock = output<void>();
+  inventoryRows = INVENTORY_ROWS;
+  hotbarRow = HOTBAR_ROW;
+  armorSlots = ARMOR_SLOT_LABELS;
+  craftingGridSlots = CRAFTING_GRID_SLOTS;
 
   handleClose() {
     this.store.closeMenus();
@@ -178,5 +277,29 @@ export class GameUiComponent {
       alert("Axe crafted! Select slot 9.");
       this.requestLock.emit();
     }
+  }
+
+  getItemCount(key: InventoryItemKey | null): number {
+    if (!key) return 0;
+    switch (key) {
+      case 'grass': return this.store.grassCount();
+      case 'dirt': return this.store.dirtCount();
+      case 'stone': return this.store.stoneCount();
+      case 'wood': return this.store.woodCount();
+      case 'leaves': return this.store.leavesCount();
+      case 'workbench': return this.store.hasWorkbench();
+      case 'axe': return this.store.hasAxe();
+      default: return 0;
+    }
+  }
+
+  getSlotLabel(key: InventoryItemKey | null): string {
+    if (!key) return '';
+    return INVENTORY_SLOT_DISPLAY[key].label;
+  }
+
+  getSlotColor(key: InventoryItemKey | null): string {
+    if (!key) return 'transparent';
+    return INVENTORY_SLOT_DISPLAY[key].color;
   }
 }

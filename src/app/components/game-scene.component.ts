@@ -1030,6 +1030,29 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
+    if (event.code === 'Escape') {
+      if (this.store.activeMenu() !== 'none') {
+        this.store.closeMenus();
+        if (!this.controls.isLocked) {
+          this.controls.lock();
+        }
+        event.preventDefault();
+      }
+      return;
+    }
+
+    if (event.code === 'KeyE') {
+      if (this.controls.isLocked) {
+        this.store.openInventoryMenu();
+        this.controls.unlock();
+      } else if (this.store.activeMenu() === 'inventory') {
+        this.store.closeMenus();
+        this.controls.lock();
+      }
+      event.preventDefault();
+      return;
+    }
+
     if (this.controls && this.controls.isLocked) {
       switch (event.code) {
         case 'ArrowUp': case 'KeyW': this.moveForward = true; break;
@@ -1037,7 +1060,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         case 'ArrowDown': case 'KeyS': this.moveBackward = true; break;
         case 'ArrowRight': case 'KeyD': this.moveRight = true; break;
         case 'Space': if (this.canJump) this.velocity.y += PLAYER_CONFIG.jumpForce; this.canJump = false; break;
-        case 'KeyE': this.store.openCraftingMenu(); this.controls.unlock(); break;
         case 'Digit1': this.store.selectedSlot.set(1); break;
         case 'Digit2': this.store.selectedSlot.set(2); break;
         case 'Digit3': this.store.selectedSlot.set(3); break;

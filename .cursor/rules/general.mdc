@@ -5,6 +5,7 @@ alwaysApply: true
 - Всё на английском: имена файлов, переменные, комментарии
 - camelCase для переменных и функций, PascalCase для классов
 - Всё через композицию, никаких god-классов
+- Используй ООП мышление
 - Player, Camera, Controls, Physics — каждый в своём файле
 - Утилиты (noise, math, coordinates) — в папке src/utils/
 
