@@ -9,9 +9,13 @@ import { MaterialService } from '../../services/material.service';
 })
 export class ToolRendererService {
   private axeGroup!: THREE.Group;
+  private pickaxeGroup!: THREE.Group;
+  private shovelGroup!: THREE.Group;
+  private swordGroup!: THREE.Group;
   private handGroup!: THREE.Group;
   private blockGroup!: THREE.Group; // Held block
   private isSwinging = false;
+  private currentToolGroup: THREE.Group | null = null;
 
   constructor(
     private sceneManager: SceneManagerService,
@@ -22,10 +26,16 @@ export class ToolRendererService {
   initialize() {
     const camera = this.sceneManager.getCamera();
     this.axeGroup = this.createAxeModel();
+    this.pickaxeGroup = this.createPickaxeModel();
+    this.shovelGroup = this.createShovelModel();
+    this.swordGroup = this.createSwordModel();
     this.handGroup = this.createHandModel();
     this.blockGroup = this.createBlockModel();
     
     camera.add(this.axeGroup);
+    camera.add(this.pickaxeGroup);
+    camera.add(this.shovelGroup);
+    camera.add(this.swordGroup);
     camera.add(this.handGroup);
     camera.add(this.blockGroup);
   }
@@ -35,34 +45,50 @@ export class ToolRendererService {
   }
 
   update(time: number, delta: number) {
-    if (!this.axeGroup || !this.handGroup || !this.blockGroup) {
+    if (!this.axeGroup || !this.pickaxeGroup || !this.shovelGroup || !this.swordGroup || !this.handGroup || !this.blockGroup) {
       return;
     }
 
     const selected = this.inventoryService.selectedItem();
     const itemType = selected.item;
     const hasItem = !!itemType && selected.count > 0;
-    const isAxe = itemType === 'axe' || itemType === 'wooden_axe' || itemType === 'wooden_pickaxe'; 
-    // Note: checking specific tool names, ideally should use isTool property but good enough for now
     
-    const isBlock = hasItem && !isAxe && itemType !== 'stick' && itemType !== 'coal'; // Assume everything else is block for now
-    const shouldShowHand = !hasItem || (hasItem && !isAxe && !isBlock);
+    // Check if item is a tool
+    const toolType = this.getToolType(itemType);
+    const isBlock = hasItem && !toolType && itemType !== 'stick' && itemType !== 'coal'; // Assume everything else is block for now
+    const shouldShowHand = !hasItem || (hasItem && !toolType && !isBlock);
 
-    // AXE / TOOL
-    if (isAxe) {
-      this.axeGroup.visible = true;
+    // TOOL (axe, pickaxe, shovel, sword)
+    if (toolType) {
+      // Hide all tool groups first
+      this.axeGroup.visible = false;
+      this.pickaxeGroup.visible = false;
+      this.shovelGroup.visible = false;
+      this.swordGroup.visible = false;
       this.blockGroup.visible = false;
-      this.handGroup.visible = false; // Hand is part of axe model implicitly or hidden
+      this.handGroup.visible = false; // Hand is part of tool model implicitly or hidden
 
-      if (this.isSwinging) {
-        const swingSpeed = 15; // Faster swing
-        this.axeGroup.rotation.x = Math.sin((time / 1000) * swingSpeed) * 1.2;
-        this.axeGroup.rotation.z = Math.PI / 8 + Math.sin((time / 1000) * swingSpeed) * 0.5;
-        this.axeGroup.position.y = -0.5 + Math.sin((time / 1000) * swingSpeed) * 0.2;
-      } else {
-        this.axeGroup.rotation.x = THREE.MathUtils.lerp(this.axeGroup.rotation.x, 0, 10 * delta);
-        this.axeGroup.rotation.z = Math.PI / 8;
-        this.axeGroup.position.y = -0.5;
+      // Show appropriate tool group
+      const toolGroup = this.getToolGroup(toolType);
+      if (toolGroup) {
+        toolGroup.visible = true;
+        this.currentToolGroup = toolGroup;
+
+        // Update tool materials based on item type
+        this.updateToolMaterials(toolGroup, itemType!);
+
+        // Animate tool swing
+        if (this.isSwinging) {
+          const swingSpeed = toolType === 'sword' ? 18 : 15; // Sword swings faster
+          const swingAmount = toolType === 'sword' ? 1.5 : 1.2;
+          toolGroup.rotation.x = Math.sin((time / 1000) * swingSpeed) * swingAmount;
+          toolGroup.rotation.z = Math.PI / 8 + Math.sin((time / 1000) * swingSpeed) * 0.5;
+          toolGroup.position.y = -0.5 + Math.sin((time / 1000) * swingSpeed) * 0.2;
+        } else {
+          toolGroup.rotation.x = THREE.MathUtils.lerp(toolGroup.rotation.x, 0, 10 * delta);
+          toolGroup.rotation.z = Math.PI / 8;
+          toolGroup.position.y = -0.5;
+        }
       }
     } 
     // BLOCK
@@ -137,9 +163,71 @@ export class ToolRendererService {
     } else {
        // Fallback hide all
        this.axeGroup.visible = false;
+       this.pickaxeGroup.visible = false;
+       this.shovelGroup.visible = false;
+       this.swordGroup.visible = false;
        this.handGroup.visible = false;
        this.blockGroup.visible = false;
+       this.currentToolGroup = null;
     }
+  }
+
+  private getToolType(itemType: string | null): 'axe' | 'pickaxe' | 'shovel' | 'sword' | null {
+    if (!itemType) return null;
+    
+    if (itemType === 'axe' || itemType === 'wooden_axe' || itemType === 'stone_axe') {
+      return 'axe';
+    }
+    if (itemType === 'wooden_pickaxe' || itemType === 'stone_pickaxe') {
+      return 'pickaxe';
+    }
+    if (itemType === 'wooden_shovel' || itemType === 'stone_shovel') {
+      return 'shovel';
+    }
+    if (itemType === 'wooden_sword' || itemType === 'stone_sword') {
+      return 'sword';
+    }
+    return null;
+  }
+
+  private getToolGroup(toolType: 'axe' | 'pickaxe' | 'shovel' | 'sword'): THREE.Group | null {
+    switch (toolType) {
+      case 'axe': return this.axeGroup;
+      case 'pickaxe': return this.pickaxeGroup;
+      case 'shovel': return this.shovelGroup;
+      case 'sword': return this.swordGroup;
+      default: return null;
+    }
+  }
+
+  private updateToolMaterials(toolGroup: THREE.Group, itemType: string) {
+    // Determine material colors based on tool tier
+    const isWooden = itemType.includes('wooden');
+    const handleColor = 0x8d6e63; // Always wood handle (brown)
+    const headColor = isWooden ? 0x8d6e63 : 0x757575; // Wood (brown) or stone (gray) head
+    
+    // Special colors for sword blade edge
+    const bladeEdgeColor = 0xeeeeee; // Light gray for sharp edges
+    
+    toolGroup.children.forEach((child, index) => {
+      if (child instanceof THREE.Mesh) {
+        const mesh = child as THREE.Mesh;
+        const material = mesh.material as THREE.MeshLambertMaterial;
+        
+        // First child is usually handle
+        if (index === 0) {
+          material.color.setHex(handleColor);
+        } 
+        // Last child is often blade edge (for sword) or tool edge
+        else if (itemType.includes('sword') && index === toolGroup.children.length - 1) {
+          material.color.setHex(bladeEdgeColor);
+        }
+        // Other parts are head/blade
+        else {
+          material.color.setHex(headColor);
+        }
+      }
+    });
   }
 
   private createAxeModel(): THREE.Group {
@@ -161,6 +249,92 @@ export class ToolRendererService {
     const edge = new THREE.Mesh(edgeGeo, edgeMat);
     edge.position.set(0.22, 0.25, 0);
     group.add(edge);
+
+    group.position.set(0.5, -0.5, -0.8);
+    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
+    group.visible = false;
+    return group;
+  }
+
+  private createPickaxeModel(): THREE.Group {
+    const group = new THREE.Group();
+    const handleGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
+    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const handle = new THREE.Mesh(handleGeo, handleMat);
+    handle.position.y = 0;
+    group.add(handle);
+
+    // Pickaxe head (two crossed picks)
+    const pick1Geo = new THREE.BoxGeometry(0.15, 0.08, 0.08);
+    const pick1Mat = new THREE.MeshLambertMaterial({ color: 0x757575 });
+    const pick1 = new THREE.Mesh(pick1Geo, pick1Mat);
+    pick1.position.set(0.06, 0.25, 0);
+    pick1.rotation.z = Math.PI / 6;
+    group.add(pick1);
+
+    const pick2Geo = new THREE.BoxGeometry(0.15, 0.08, 0.08);
+    const pick2Mat = new THREE.MeshLambertMaterial({ color: 0x757575 });
+    const pick2 = new THREE.Mesh(pick2Geo, pick2Mat);
+    pick2.position.set(0.06, 0.25, 0);
+    pick2.rotation.z = -Math.PI / 6;
+    group.add(pick2);
+
+    group.position.set(0.5, -0.5, -0.8);
+    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
+    group.visible = false;
+    return group;
+  }
+
+  private createShovelModel(): THREE.Group {
+    const group = new THREE.Group();
+    const handleGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
+    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const handle = new THREE.Mesh(handleGeo, handleMat);
+    handle.position.y = 0;
+    group.add(handle);
+
+    // Shovel blade
+    const bladeGeo = new THREE.BoxGeometry(0.12, 0.18, 0.06);
+    const bladeMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
+    const blade = new THREE.Mesh(bladeGeo, bladeMat);
+    blade.position.set(0.04, 0.28, 0);
+    blade.rotation.x = -Math.PI / 12;
+    group.add(blade);
+
+    group.position.set(0.5, -0.5, -0.8);
+    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
+    group.visible = false;
+    return group;
+  }
+
+  private createSwordModel(): THREE.Group {
+    const group = new THREE.Group();
+    const handleGeo = new THREE.BoxGeometry(0.06, 0.4, 0.06);
+    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    const handle = new THREE.Mesh(handleGeo, handleMat);
+    handle.position.y = -0.1;
+    group.add(handle);
+
+    // Sword guard
+    const guardGeo = new THREE.BoxGeometry(0.15, 0.05, 0.05);
+    const guardMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
+    const guard = new THREE.Mesh(guardGeo, guardMat);
+    guard.position.set(0, 0.1, 0);
+    group.add(guard);
+
+    // Sword blade
+    const bladeGeo = new THREE.BoxGeometry(0.04, 0.35, 0.04);
+    const bladeMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    const blade = new THREE.Mesh(bladeGeo, bladeMat);
+    blade.position.set(0, 0.35, 0);
+    group.add(blade);
+
+    // Blade tip
+    const tipGeo = new THREE.BoxGeometry(0.02, 0.08, 0.02);
+    const tipMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    const tip = new THREE.Mesh(tipGeo, tipMat);
+    tip.position.set(0, 0.57, 0);
+    group.add(tip);
 
     group.position.set(0.5, -0.5, -0.8);
     group.rotation.set(0, -Math.PI / 4, Math.PI / 8);

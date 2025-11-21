@@ -107,6 +107,13 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         drops: { item: 'oak_planks', count: 1 },
         texture: 'assets/textures/oak_planks.png',
     },
+    stick: {
+        procedural: {
+            type: 'flat',
+            color1: '#8D6E63'
+        },
+        maxStack: 64
+    },
     leaves: {
         tick: true,
         faces: {
@@ -133,6 +140,70 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         procedural: {
             type: 'flat',
             color1: '#FF0000'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    wooden_axe: {
+        procedural: {
+            type: 'flat',
+            color1: '#8D6E63'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    wooden_pickaxe: {
+        procedural: {
+            type: 'flat',
+            color1: '#8D6E63'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    wooden_shovel: {
+        procedural: {
+            type: 'flat',
+            color1: '#8D6E63'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    wooden_sword: {
+        procedural: {
+            type: 'flat',
+            color1: '#8D6E63'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    stone_pickaxe: {
+        procedural: {
+            type: 'flat',
+            color1: '#757575'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    stone_axe: {
+        procedural: {
+            type: 'flat',
+            color1: '#757575'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    stone_shovel: {
+        procedural: {
+            type: 'flat',
+            color1: '#757575'
+        },
+        isTool: true,
+        maxStack: 1
+    },
+    stone_sword: {
+        procedural: {
+            type: 'flat',
+            color1: '#757575'
         },
         isTool: true,
         maxStack: 1

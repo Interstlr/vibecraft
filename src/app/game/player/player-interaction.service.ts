@@ -171,12 +171,25 @@ export class PlayerInteractionService {
     const selected = this.inventoryService.selectedItem();
     const toolType = selected.item;
 
-    // Check axe (for wood and planks)
-    const isAxe = toolType === 'axe' || toolType === 'wooden_axe';
+    // Check tool effectiveness
+    const isAxe = toolType === 'axe' || toolType === 'wooden_axe' || toolType === 'stone_axe';
+    const isPickaxe = toolType === 'wooden_pickaxe' || toolType === 'stone_pickaxe';
+    const isShovel = toolType === 'wooden_shovel' || toolType === 'stone_shovel';
+    
     const isWoodOrPlank = block.type === 'wood' || block.type === 'oak_planks' || block.type === 'workbench';
+    const isStone = block.type === 'stone';
+    const isDirtOrGrass = block.type === 'dirt' || block.type === 'grass';
 
+    // Tool effectiveness multipliers
     if (isAxe && isWoodOrPlank) {
-      baseSpeed /= 5.0; // Faster with axe
+      const tier = toolType === 'stone_axe' ? 7.0 : 5.0; // Stone is faster
+      baseSpeed /= tier;
+    } else if (isPickaxe && isStone) {
+      const tier = toolType === 'stone_pickaxe' ? 5.0 : 2.5; // Stone pickaxe is more effective
+      baseSpeed /= tier;
+    } else if (isShovel && isDirtOrGrass) {
+      const tier = toolType === 'stone_shovel' ? 6.0 : 3.0; // Stone shovel is faster
+      baseSpeed /= tier;
     }
 
     this.miningTimer += delta;
