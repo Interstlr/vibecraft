@@ -25,6 +25,7 @@ export class InputManagerService {
   private callbacks: InteractionCallbacks | null = null;
   private movement: MovementState = { forward: false, backward: false, left: false, right: false };
   private jumpActive = false;
+  private sprintActive = false;
 
   private keyDownHandler = (event: KeyboardEvent) => this.handleKeyDown(event);
   private keyUpHandler = (event: KeyboardEvent) => this.handleKeyUp(event);
@@ -94,6 +95,10 @@ export class InputManagerService {
     return this.jumpActive;
   }
 
+  isSprintHeld(): boolean {
+    return this.sprintActive;
+  }
+
   private handleKeyDown(event: KeyboardEvent) {
     if (event.code === 'Escape') {
       if (this.store.activeMenu() !== 'none') {
@@ -140,6 +145,10 @@ export class InputManagerService {
           event.preventDefault();
           this.jumpActive = true;
           break;
+        case 'ControlLeft':
+        case 'ControlRight':
+          this.sprintActive = true;
+          break;
         case 'Digit1': this.inventoryService.selectHotbarSlot(0); break;
         case 'Digit2': this.inventoryService.selectHotbarSlot(1); break;
         case 'Digit3': this.inventoryService.selectHotbarSlot(2); break;
@@ -173,6 +182,10 @@ export class InputManagerService {
         break;
       case 'Space':
         this.jumpActive = false;
+        break;
+      case 'ControlLeft':
+      case 'ControlRight':
+        this.sprintActive = false;
         break;
     }
   }

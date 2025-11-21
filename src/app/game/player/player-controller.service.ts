@@ -46,11 +46,15 @@ export class PlayerControllerService {
     this.direction.x = Number(movement.right) - Number(movement.left);
     this.direction.normalize();
 
+    const speed = this.input.isSprintHeld() 
+      ? PLAYER_CONFIG.moveSpeed * PLAYER_CONFIG.sprintSpeedMultiplier 
+      : PLAYER_CONFIG.moveSpeed;
+
     if (movement.forward || movement.backward) {
-      this.velocity.z -= this.direction.z * PLAYER_CONFIG.moveSpeed * delta;
+      this.velocity.z -= this.direction.z * speed * delta;
     }
     if (movement.left || movement.right) {
-      this.velocity.x -= this.direction.x * PLAYER_CONFIG.moveSpeed * delta;
+      this.velocity.x -= this.direction.x * speed * delta;
     }
 
     if (this.canJump && this.input.isJumpHeld()) {
