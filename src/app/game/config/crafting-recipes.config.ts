@@ -105,8 +105,8 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     id: 'stone_sword',
     type: 'shaped',
     maxGridSize: 3,
-    pattern: [' S ', ' S ', ' S '],
-    key: { S: 'stone' },
+    pattern: [' S ', ' S ', ' H '],
+    key: { S: 'stone', H: 'stick' },
     result: { item: 'stone_sword', count: 1 }
   }
 ];
