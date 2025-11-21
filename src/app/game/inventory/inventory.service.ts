@@ -83,6 +83,32 @@ export class InventoryService {
     }
     return false;
   }
+  
+  // Drop one from held item, returns what was dropped
+  dropOneHeld(): InventorySlot | null {
+    const held = this.heldItem();
+    if (!held.item || held.count <= 0) return null;
+
+    const dropped = { item: held.item, count: 1 };
+    
+    if (held.count > 1) {
+      this.heldItem.set({ item: held.item, count: held.count - 1 });
+    } else {
+      this.heldItem.set({ item: null, count: 0 });
+    }
+    
+    return dropped;
+  }
+
+  // Drop all held items, returns what was dropped
+  dropAllHeld(): InventorySlot | null {
+    const held = this.heldItem();
+    if (!held.item || held.count <= 0) return null;
+
+    const dropped = { ...held };
+    this.heldItem.set({ item: null, count: 0 });
+    return dropped;
+  }
 
   getItemCount(item: string): number {
     return this.slots().reduce((acc, slot, i) => {

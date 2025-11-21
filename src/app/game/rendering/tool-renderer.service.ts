@@ -95,6 +95,9 @@ export class ToolRendererService {
     else if (isBlock) {
       this.blockGroup.visible = true;
       this.axeGroup.visible = false;
+      this.pickaxeGroup.visible = false;
+      this.shovelGroup.visible = false;
+      this.swordGroup.visible = false;
       this.handGroup.visible = true; // Show hand holding block
 
       // Update block material if changed
@@ -138,6 +141,9 @@ export class ToolRendererService {
     else if (shouldShowHand) {
       this.handGroup.visible = true;
       this.axeGroup.visible = false;
+      this.pickaxeGroup.visible = false;
+      this.shovelGroup.visible = false;
+      this.swordGroup.visible = false;
       this.blockGroup.visible = false;
 
       const swingSpeed = 9;

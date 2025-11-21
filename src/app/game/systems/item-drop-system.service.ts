@@ -16,9 +16,9 @@ export class ItemDropSystemService {
 
   constructor(private blockPlacer: BlockPlacerService) {}
 
-  spawnDrop(type: string, position: THREE.Vector3) {
+  spawnDrop(type: string, position: THREE.Vector3, count: number = 1, velocity?: THREE.Vector3) {
     const id = Math.random().toString(36).substr(2, 9);
-    const drop = new ItemDrop(id, type, position);
+    const drop = new ItemDrop(id, type, count, position, velocity);
     this.drops.push(drop);
   }
 
@@ -139,4 +139,3 @@ export class ItemDropSystemService {
     drop.position.copy(nextPos);
   }
 }
-

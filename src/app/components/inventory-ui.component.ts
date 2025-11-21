@@ -4,6 +4,9 @@ import { InventoryService } from '../game/inventory/inventory.service';
 import { InventorySlot } from '../game/inventory/inventory-slot';
 import { BLOCKS } from '../config/blocks.config';
 import { BlockIconService } from '../game/rendering/block-icon.service';
+import { ItemDropSystemService } from '../game/systems/item-drop-system.service';
+import { SceneManagerService } from '../game/core/scene-manager.service';
+import * as THREE from 'three';
 
 const ITEM_COLORS: Record<string, string> = {
   'plank': '#C19A6B',
@@ -13,6 +16,10 @@ const ITEM_COLORS: Record<string, string> = {
   'wooden_axe': '#8D6E63',
   'coal': '#212121',
   'workbench': '#D2691E',
+  'stone': '#7d7d7d',
+  'grass': '#567d46',
+  'dirt': '#594230',
+  'cobble': '#606060',
 };
 
 @Component({
@@ -25,6 +32,8 @@ const ITEM_COLORS: Record<string, string> = {
 export class InventoryUiComponent {
   blocks = BLOCKS;
   blockIconService = inject(BlockIconService);
+  itemDropSystem = inject(ItemDropSystemService);
+  sceneManager = inject(SceneManagerService);
   
   mouseX = signal(0);
   mouseY = signal(0);
@@ -61,20 +70,14 @@ export class InventoryUiComponent {
   }
   
   getSlotColor(item: string | null): string {
-     // This method is less relevant now that we render icons, 
-     // but might still be used as fallback background if icon generation fails or is loading?
-     // Actually, BlockIconService returns data URL, so this color might be behind the image or unused if image covers it.
      if (!item) return 'transparent';
-     return 'transparent'; 
+     return ITEM_COLORS[item] || '#FFFFFF'; 
   }
 
   getItemDisplayName(item: string | null): string {
     if (!item) return '';
     
     // Format item ID to display name
-    // "wooden_axe" -> "Wooden Axe"
-    // "oak_planks" -> "Oak Planks"
-    // "stone_pickaxe" -> "Stone Pickaxe"
     return item
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -121,5 +124,38 @@ export class InventoryUiComponent {
 
   onContextMenu(event: Event) {
       event.preventDefault();
+  }
+
+  onBackdropClick(event: MouseEvent) {
+    const held = this.inventoryService.heldItem();
+    if (!held.item) return;
+    
+    let dropped: InventorySlot | null = null;
+
+    if (event.button === 0) { // Left Click -> Drop Stack
+       dropped = this.inventoryService.dropAllHeld();
+    } else if (event.button === 2) { // Right Click -> Drop One
+       dropped = this.inventoryService.dropOneHeld();
+    }
+    
+    if (dropped && dropped.item) {
+       const camera = this.sceneManager.getCamera();
+       
+       const dir = new THREE.Vector3();
+       camera.getWorldDirection(dir);
+       
+       // Start closer to the player (hand position)
+       const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.5));
+       
+       // Velocity: reduce force to ensure it lands nearby (approx 2 blocks)
+       // 4 m/s forward + small arc up (3.5)
+       const velocity = dir.clone().multiplyScalar(4).add(new THREE.Vector3(0, 3.5, 0));
+       
+       // Add slight randomness to feel natural
+       velocity.x += (Math.random() - 0.5) * 0.5;
+       velocity.z += (Math.random() - 0.5) * 0.5;
+       
+       this.itemDropSystem.spawnDrop(dropped.item, spawnPos, dropped.count, velocity);
+    }
   }
 }
