@@ -5,6 +5,7 @@ import { InventoryService } from '../game/inventory/inventory.service';
 import { InventoryUiComponent } from './inventory-ui.component';
 import { BLOCKS } from '../config/blocks.config';
 import { GAME_CONFIG } from '../config/game.config';
+import { BlockIconService } from '../game/rendering/block-icon.service';
 
 @Component({
   selector: 'app-game-ui',
@@ -37,10 +38,14 @@ import { GAME_CONFIG } from '../config/game.config';
              [class.scale-110]="inventoryService.selectedHotbarIndex() === i"
              [class.border-white/30]="inventoryService.selectedHotbarIndex() !== i"
              [style.opacity]="inventoryService.getSlot(i).item ? 1 : 0.3"
-             [style.background-color]="getSlotColor(inventoryService.getSlot(i).item)"
-             [style.background-image]="getSlotImage(inventoryService.getSlot(i).item) ? 'url(' + getSlotImage(inventoryService.getSlot(i).item) + ')' : null"
-             style="background-size: cover; image-rendering: pixelated;"
              (click)="inventoryService.selectHotbarSlot(i)">
+          
+          <!-- Item Icon -->
+          <img *ngIf="inventoryService.getSlot(i).item" 
+               [src]="getSlotImage(inventoryService.getSlot(i).item)"
+               class="w-full h-full object-contain pixelated drop-shadow-sm"
+               alt="item">
+
           <span class="absolute top-0 left-1 text-[8px] opacity-80">{{ i + 1 }}</span>
           <span class="absolute bottom-0 right-1 text-xs drop-shadow-md" *ngIf="inventoryService.getSlot(i).count > 1">
             {{ inventoryService.getSlot(i).count }}
@@ -67,28 +72,23 @@ import { GAME_CONFIG } from '../config/game.config';
         </div>
       </div>
     }
-  `
+  `,
+  styles: [`
+    .pixelated {
+      image-rendering: pixelated;
+    }
+  `]
 })
 export class GameUiComponent {
   store = inject(GameStateService);
   inventoryService = inject(InventoryService);
+  blockIconService = inject(BlockIconService);
   requestLock = output<void>();
   readonly config = GAME_CONFIG;
 
-  getSlotColor(item: string | null): string {
-    if (!item) return 'transparent';
-    const def = BLOCKS[item];
-    if (def?.procedural?.color1) return def.procedural.color1;
-    return 'transparent';
-  }
-  
   getSlotImage(item: string | null): string {
       if (!item) return '';
-      const def = BLOCKS[item];
-      if (def?.faces?.side?.texture) return def.faces.side.texture;
-      if (def?.faces?.top?.texture) return def.faces.top.texture;
-      if (item === 'workbench') return 'assets/textures/oak-side.png';
-      return '';
+      return this.blockIconService.getIcon(item);
   }
 
   handleClose() {

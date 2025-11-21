@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Random } from '../utils/random';
 
 export interface WorldBuilder {
   addBlock(x: number, y: number, z: number, type: string): void;
@@ -10,8 +11,8 @@ export interface WorldBuilder {
 })
 export class TreeGeneratorService {
   
-  generate(x: number, y: number, z: number, world: WorldBuilder) {
-    const height = 4 + Math.floor(Math.random() * 2);
+  generate(x: number, y: number, z: number, world: WorldBuilder, random: Random) {
+    const height = 4 + random.range(0, 2);
 
     // Trunk
     for(let i = 0; i < height; i++) {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { InstancedRendererService } from '../rendering/instanced-renderer.service';
 import { GameStateService } from '../../services/game-state.service';
+import { MultiplayerService } from '../networking/multiplayer.service';
 
 export interface BlockInstance {
   type: string;
@@ -19,6 +20,7 @@ export class BlockPlacerService {
   constructor(
     private instancedRenderer: InstancedRendererService,
     private store: GameStateService,
+    private multiplayer: MultiplayerService
   ) {}
 
   onBlockUpdate(callback: BlockUpdateCallback) {
@@ -32,11 +34,34 @@ export class BlockPlacerService {
   initialize() {
     this.blockData.clear();
     this.store.blockCount.set(0);
+
+    // Listen to remote updates
+    this.multiplayer.blockUpdated$.subscribe(data => {
+      if (data.action === 'add' && data.type) {
+        this.addBlock(data.x, data.y, data.z, data.type, false);
+      } else if (data.action === 'remove') {
+        this.removeBlock(data.x, data.y, data.z, false);
+      }
+    });
+
+    // Apply initial world changes via ReplaySubject (handles race conditions)
+    this.multiplayer.worldInitialized$.subscribe(changes => {
+      console.log('Received initial world changes:', Object.keys(changes).length);
+      Object.values(changes || {}).forEach(data => {
+        if (!data) return;
+        if (data.action === 'add' && data.type) {
+          this.addBlock(data.x, data.y, data.z, data.type, false);
+        } else if (data.action === 'remove') {
+          this.removeBlock(data.x, data.y, data.z, false);
+        }
+      });
+    });
   }
 
-  addBlock(x: number, y: number, z: number, type: string): boolean {
+  addBlock(x: number, y: number, z: number, type: string, broadcast: boolean = true): boolean {
     const key = this.getKey(x, y, z);
     if (this.blockData.has(key)) {
+      // If force replace or check mismatch? For now just return false
       return false;
     }
     const instanceId = this.instancedRenderer.placeInstance(type, x, y, z);
@@ -46,10 +71,15 @@ export class BlockPlacerService {
     this.blockData.set(key, { type, instanceId });
     this.store.blockCount.set(this.blockData.size);
     this.notify(x, y, z, type, 'add');
+    
+    if (broadcast) {
+      this.multiplayer.sendBlockUpdate(x, y, z, type, 'add');
+    }
+    
     return true;
   }
 
-  removeBlock(x: number, y: number, z: number): BlockInstance | null {
+  removeBlock(x: number, y: number, z: number, broadcast: boolean = true): BlockInstance | null {
     const key = this.getKey(x, y, z);
     const block = this.blockData.get(key);
     if (!block) {
@@ -59,16 +89,21 @@ export class BlockPlacerService {
     this.blockData.delete(key);
     this.store.blockCount.set(this.blockData.size);
     this.notify(x, y, z, block.type, 'remove');
+    
+    if (broadcast) {
+      this.multiplayer.sendBlockUpdate(x, y, z, null, 'remove');
+    }
+    
     return block;
   }
 
-  replaceBlock(x: number, y: number, z: number, newType: string) {
+  replaceBlock(x: number, y: number, z: number, newType: string, broadcast: boolean = true) {
     const existing = this.blockData.get(this.getKey(x, y, z));
     if (!existing || existing.type === newType) {
       return;
     }
-    this.removeBlock(x, y, z);
-    this.addBlock(x, y, z, newType);
+    this.removeBlock(x, y, z, broadcast);
+    this.addBlock(x, y, z, newType, broadcast);
   }
 
   hasBlock(x: number, y: number, z: number): boolean {
@@ -96,4 +131,3 @@ export class BlockPlacerService {
     return `${x},${y},${z}`;
   }
 }
-

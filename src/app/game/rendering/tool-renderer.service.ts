@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { SceneManagerService } from '../core/scene-manager.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { MaterialService } from '../../services/material.service';
 
 @Injectable({
   providedIn: 'root',
@@ -9,19 +10,24 @@ import { InventoryService } from '../inventory/inventory.service';
 export class ToolRendererService {
   private axeGroup!: THREE.Group;
   private handGroup!: THREE.Group;
+  private blockGroup!: THREE.Group; // Held block
   private isSwinging = false;
 
   constructor(
     private sceneManager: SceneManagerService,
     private inventoryService: InventoryService,
+    private materialService: MaterialService
   ) {}
 
   initialize() {
     const camera = this.sceneManager.getCamera();
     this.axeGroup = this.createAxeModel();
     this.handGroup = this.createHandModel();
+    this.blockGroup = this.createBlockModel();
+    
     camera.add(this.axeGroup);
     camera.add(this.handGroup);
+    camera.add(this.blockGroup);
   }
 
   setSwinging(active: boolean) {
@@ -29,37 +35,94 @@ export class ToolRendererService {
   }
 
   update(time: number, delta: number) {
-    if (!this.axeGroup || !this.handGroup) {
+    if (!this.axeGroup || !this.handGroup || !this.blockGroup) {
       return;
     }
 
     const selected = this.inventoryService.selectedItem();
-    const hasItem = !!selected.item && selected.count > 0;
-    const isAxe = selected.item === 'axe';
-    const shouldShowHand = !isAxe && !hasItem;
+    const itemType = selected.item;
+    const hasItem = !!itemType && selected.count > 0;
+    const isAxe = itemType === 'axe' || itemType === 'wooden_axe' || itemType === 'wooden_pickaxe'; 
+    // Note: checking specific tool names, ideally should use isTool property but good enough for now
+    
+    const isBlock = hasItem && !isAxe && itemType !== 'stick' && itemType !== 'coal'; // Assume everything else is block for now
+    const shouldShowHand = !hasItem || (hasItem && !isAxe && !isBlock);
 
+    // AXE / TOOL
     if (isAxe) {
       this.axeGroup.visible = true;
+      this.blockGroup.visible = false;
+      this.handGroup.visible = false; // Hand is part of axe model implicitly or hidden
+
       if (this.isSwinging) {
-        const swingSpeed = 8;
-        this.axeGroup.rotation.x = Math.sin((time / 1000) * swingSpeed) * 0.8;
-        this.axeGroup.rotation.z = Math.PI / 8 + Math.sin((time / 1000) * swingSpeed) * 0.2;
-        this.axeGroup.position.y = -0.5 + Math.sin((time / 1000) * swingSpeed) * 0.1;
+        const swingSpeed = 15; // Faster swing
+        this.axeGroup.rotation.x = Math.sin((time / 1000) * swingSpeed) * 1.2;
+        this.axeGroup.rotation.z = Math.PI / 8 + Math.sin((time / 1000) * swingSpeed) * 0.5;
+        this.axeGroup.position.y = -0.5 + Math.sin((time / 1000) * swingSpeed) * 0.2;
       } else {
         this.axeGroup.rotation.x = THREE.MathUtils.lerp(this.axeGroup.rotation.x, 0, 10 * delta);
         this.axeGroup.rotation.z = Math.PI / 8;
         this.axeGroup.position.y = -0.5;
       }
-    } else {
+    } 
+    // BLOCK
+    else if (isBlock) {
+      this.blockGroup.visible = true;
       this.axeGroup.visible = false;
-    }
+      this.handGroup.visible = true; // Show hand holding block
 
-    if (shouldShowHand) {
+      // Update block material if changed
+      const material = this.materialService.getMaterial(itemType!);
+      const mesh = this.blockGroup.children[0] as THREE.Mesh;
+      if (mesh) {
+          mesh.material = material;
+      }
+
+      const swingSpeed = 10;
+      const baseRotX = 0;
+      const baseRotY = Math.PI / 4; 
+      const basePosX = 0.5; 
+      const basePosY = -0.4; 
+      const basePosZ = -0.8;
+
+      if (this.isSwinging) {
+          // Block punch animation
+          const swing = Math.sin((time / 1000) * swingSpeed);
+          this.blockGroup.rotation.x = baseRotX + swing * 0.5;
+          this.blockGroup.rotation.y = baseRotY + swing * 0.5;
+          this.blockGroup.position.set(
+              basePosX + swing * 0.2, 
+              basePosY + swing * 0.2, 
+              basePosZ + swing * 0.2
+          );
+      } else {
+          // Idle bobbing
+          const idleBob = Math.sin(time / 800) * 0.02;
+          this.blockGroup.rotation.x = THREE.MathUtils.lerp(this.blockGroup.rotation.x, baseRotX, 6 * delta);
+          this.blockGroup.rotation.y = THREE.MathUtils.lerp(this.blockGroup.rotation.y, baseRotY, 6 * delta);
+          this.blockGroup.position.set(basePosX, basePosY + idleBob, basePosZ);
+      }
+      
+      // Sync hand to block (simplified)
+      this.handGroup.position.copy(this.blockGroup.position).add(new THREE.Vector3(0.2, -0.3, 0.2));
+      this.handGroup.rotation.copy(this.blockGroup.rotation);
+
+    } 
+    // EMPTY HAND
+    else if (shouldShowHand) {
       this.handGroup.visible = true;
+      this.axeGroup.visible = false;
+      this.blockGroup.visible = false;
+
       const swingSpeed = 9;
       const baseRotX = -0.4;
       const baseRotZ = Math.PI / 10;
       const basePosY = -0.65;
+      
+      // Reset hand transform from block mode
+      this.handGroup.position.set(0.72, -0.65, -0.9);
+      this.handGroup.rotation.set(-Math.PI / 5, Math.PI / 11, Math.PI / 18);
+
       if (this.isSwinging) {
         const swing = Math.sin((time / 1000) * swingSpeed);
         this.handGroup.rotation.x = baseRotX + swing * 0.35;
@@ -72,7 +135,10 @@ export class ToolRendererService {
         this.handGroup.position.y = THREE.MathUtils.lerp(this.handGroup.position.y, basePosY + idleBob, 6 * delta);
       }
     } else {
-      this.handGroup.visible = false;
+       // Fallback hide all
+       this.axeGroup.visible = false;
+       this.handGroup.visible = false;
+       this.blockGroup.visible = false;
     }
   }
 
@@ -127,5 +193,19 @@ export class ToolRendererService {
     group.visible = false;
     return group;
   }
-}
 
+  private createBlockModel(): THREE.Group {
+      const group = new THREE.Group();
+      // Scale 0.4 seems right for hand
+      const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      // Initial material, will be replaced
+      const material = new THREE.MeshBasicMaterial({ visible: false }); 
+      const mesh = new THREE.Mesh(geometry, material);
+      group.add(mesh);
+      
+      group.position.set(0.5, -0.4, -0.8);
+      group.rotation.set(0, Math.PI/4, 0);
+      group.visible = false;
+      return group;
+  }
+}

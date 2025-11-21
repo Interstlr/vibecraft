@@ -16,6 +16,10 @@ import { SkyRendererService } from '../game/rendering/sky-renderer.service';
 import { PlayerControllerService } from '../game/player/player-controller.service';
 import { ChickenRendererService } from '../game/rendering/chicken-renderer.service';
 import { ChickenSystemService } from '../game/systems/chicken-system.service';
+import { MultiplayerService } from '../game/networking/multiplayer.service';
+import { RemotePlayerRendererService } from '../game/rendering/remote-player-renderer.service';
+import { environment } from '../../environments/environment';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-game-scene',
@@ -40,6 +44,8 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private playerController = inject(PlayerControllerService);
   private chickenRenderer = inject(ChickenRendererService);
   private chickenSystem = inject(ChickenSystemService);
+  private multiplayer = inject(MultiplayerService);
+  private remotePlayerRenderer = inject(RemotePlayerRendererService);
 
   ngAfterViewInit() {
     const container = this.rendererContainer.nativeElement;
@@ -48,6 +54,11 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.highlightRenderer.initialize();
     this.crackOverlay.initialize();
     this.toolRenderer.initialize();
+    
+    // Initialize multiplayer before world gen so we can receive initial state
+    this.multiplayer.initialize();
+    this.remotePlayerRenderer.initialize();
+    
     this.blockPlacer.initialize();
     this.skyRenderer.initialize();
     this.chickenRenderer.initialize();
@@ -59,7 +70,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       onSecondaryDown: () => this.playerInteraction.handleSecondaryAction(),
     });
 
-    this.generateWorld();
+    this.initializeWorld();
     this.gameLoop.start();
 
     this.chickenSystem.spawnChicken(new THREE.Vector3(1, 10, -3));
@@ -75,13 +86,25 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.inputManager.lockPointer();
   }
 
-  private generateWorld() {
+  private initializeWorld() {
+      if (environment.multiplayer) {
+          // Wait for seed from server
+          this.multiplayer.worldSeed$.pipe(take(1)).subscribe(seed => {
+              this.generateWorld(seed);
+          });
+      } else {
+          // Generate random seed locally
+          this.generateWorld(Math.random() * 10000);
+      }
+  }
+
+  private generateWorld(seed: number) {
     const builder: WorldBuilder = {
-      addBlock: (x, y, z, type) => this.blockPlacer.addBlock(x, y, z, type),
+      addBlock: (x, y, z, type) => this.blockPlacer.addBlock(x, y, z, type, false), // false = no broadcast
       hasBlock: (x, y, z) => this.blockPlacer.hasBlock(x, y, z),
     };
 
-    this.worldGenerator.generate(builder);
+    this.worldGenerator.generate(builder, seed);
     this.instancedRenderer.syncCounts();
   }
 }

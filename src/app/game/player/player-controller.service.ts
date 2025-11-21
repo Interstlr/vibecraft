@@ -4,6 +4,8 @@ import { SceneManagerService } from '../core/scene-manager.service';
 import { InputManagerService } from '../core/input-manager.service';
 import { BlockPlacerService } from '../world/block-placer.service';
 import { PLAYER_CONFIG } from '../../config/player.config';
+import { MultiplayerService } from '../networking/multiplayer.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 @Injectable({
   providedIn: 'root',
@@ -11,14 +13,17 @@ import { PLAYER_CONFIG } from '../../config/player.config';
 export class PlayerControllerService {
   private velocity = new THREE.Vector3();
   private direction = new THREE.Vector3();
-  private spawnPosition = new THREE.Vector3(0, 10, 0);
+  private spawnPosition = new THREE.Vector3(0, 10, 0); // Default spawn
   private canJump = false;
   private readonly MIN_WORLD_Y = -20;
+  private lastSentTime = 0;
 
   constructor(
     private sceneManager: SceneManagerService,
     private input: InputManagerService,
     private blockPlacer: BlockPlacerService,
+    private multiplayer: MultiplayerService,
+    private inventory: InventoryService
   ) {}
 
   get position(): THREE.Vector3 {
@@ -89,6 +94,17 @@ export class PlayerControllerService {
 
     if (camera.position.y < this.MIN_WORLD_Y) {
       this.resetPosition();
+    }
+
+    // Network sync
+    const now = performance.now();
+    if (now - this.lastSentTime > 50) { // 20 times per second
+      this.multiplayer.sendMove(
+        camera.position,
+        camera.rotation,
+        this.inventory.selectedItem().item
+      );
+      this.lastSentTime = now;
     }
   }
 

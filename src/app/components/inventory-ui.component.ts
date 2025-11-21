@@ -1,8 +1,9 @@
-import { Component, HostListener, signal, computed } from '@angular/core';
+import { Component, HostListener, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InventoryService } from '../game/inventory/inventory.service';
 import { InventorySlot } from '../game/inventory/inventory-slot';
 import { BLOCKS } from '../config/blocks.config';
+import { BlockIconService } from '../game/rendering/block-icon.service';
 
 const ITEM_COLORS: Record<string, string> = {
   'plank': '#C19A6B',
@@ -23,6 +24,7 @@ const ITEM_COLORS: Record<string, string> = {
 })
 export class InventoryUiComponent {
   blocks = BLOCKS;
+  blockIconService = inject(BlockIconService);
   
   mouseX = signal(0);
   mouseY = signal(0);
@@ -48,26 +50,16 @@ export class InventoryUiComponent {
 
   getSlotImage(item: string | null): string {
     if (!item) return '';
-    const def = this.blocks[item];
-    
-    // Block definitions
-    if (def?.faces?.side?.texture) return def.faces.side.texture;
-    if (def?.faces?.top?.texture) return def.faces.top.texture;
-    if (def?.texture) return def.texture;
-
-    return '';
+    // Use block icon service for all items that are blocks or have mesh representation
+    return this.blockIconService.getIcon(item);
   }
   
   getSlotColor(item: string | null): string {
+     // This method is less relevant now that we render icons, 
+     // but might still be used as fallback background if icon generation fails or is loading?
+     // Actually, BlockIconService returns data URL, so this color might be behind the image or unused if image covers it.
      if (!item) return 'transparent';
-     
-     // Check manual color map first for items
-     if (ITEM_COLORS[item]) return ITEM_COLORS[item];
-
-     const def = this.blocks[item];
-     if (def?.procedural?.color1) return def.procedural.color1;
-     
-     return '#FF00FF'; // Missing texture/color debug
+     return 'transparent'; 
   }
 
   onSlotClick(index: number, event: MouseEvent) {

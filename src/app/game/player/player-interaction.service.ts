@@ -19,6 +19,7 @@ import { PLAYER_CONFIG } from '../../config/player.config';
 export class PlayerInteractionService {
   private readonly MINING_SPEEDS: Record<string, number> = {
     wood: 2.0,
+    oak_planks: 2.0,
     leaves: 0.2,
     stone: 3.0,
     dirt: 0.5,
@@ -168,9 +169,14 @@ export class PlayerInteractionService {
 
     let baseSpeed = this.MINING_SPEEDS[block.type] ?? 1.0;
     const selected = this.inventoryService.selectedItem();
-    // Check axe
-    if (selected.item === 'axe' && (block.type === 'wood' || block.type === 'workbench')) {
-      baseSpeed /= 5.0;
+    const toolType = selected.item;
+
+    // Check axe (for wood and planks)
+    const isAxe = toolType === 'axe' || toolType === 'wooden_axe';
+    const isWoodOrPlank = block.type === 'wood' || block.type === 'oak_planks' || block.type === 'workbench';
+
+    if (isAxe && isWoodOrPlank) {
+      baseSpeed /= 5.0; // Faster with axe
     }
 
     this.miningTimer += delta;

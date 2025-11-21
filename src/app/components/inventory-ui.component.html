@@ -15,10 +15,13 @@
                  [style.grid-template-rows]="'repeat(' + inventoryService.craftingGridSize() + ', 36px)'">
                 <div class="slot" *ngFor="let i of craftingIndices()" 
                     (mousedown)="onSlotClick(i, $event)">
-                    <div class="item-icon" *ngIf="inventoryService.getSlot(i).item as item"
-                        [style.background-image]="getSlotImage(item) ? 'url(' + getSlotImage(item) + ')' : null"
-                        [style.background-color]="getSlotColor(item)">
-                    </div>
+                    
+                    <!-- Item Icon -->
+                    <img *ngIf="inventoryService.getSlot(i).item as item" 
+                         [src]="getSlotImage(item)"
+                         class="item-icon pixelated"
+                         alt="item">
+
                     <div class="item-count" *ngIf="inventoryService.getSlot(i).count > 1">
                         {{ inventoryService.getSlot(i).count }}
                     </div>
@@ -26,10 +29,13 @@
             </div>
             <div class="crafting-arrow">➔</div>
             <div class="slot result-slot" (mousedown)="onSlotClick(resultSlotIndex(), $event)">
-                <div class="item-icon" *ngIf="inventoryService.getSlot(resultSlotIndex()).item as item"
-                    [style.background-image]="getSlotImage(item) ? 'url(' + getSlotImage(item) + ')' : null"
-                    [style.background-color]="getSlotColor(item)">
-                </div>
+                
+                <!-- Item Icon -->
+                <img *ngIf="inventoryService.getSlot(resultSlotIndex()).item as item" 
+                     [src]="getSlotImage(item)"
+                     class="item-icon pixelated"
+                     alt="item">
+
                 <div class="item-count" *ngIf="inventoryService.getSlot(resultSlotIndex()).count > 1">
                     {{ inventoryService.getSlot(resultSlotIndex()).count }}
                 </div>
@@ -48,10 +54,13 @@
                 27,28,29,30,31,32,33,34,35
             ]">
                 <div class="slot" (mousedown)="onSlotClick(i, $event)">
-                    <div class="item-icon" *ngIf="inventoryService.getSlot(i).item as item"
-                        [style.background-image]="getSlotImage(item) ? 'url(' + getSlotImage(item) + ')' : null"
-                        [style.background-color]="getSlotColor(item)">
-                    </div>
+                    
+                    <!-- Item Icon -->
+                    <img *ngIf="inventoryService.getSlot(i).item as item" 
+                         [src]="getSlotImage(item)"
+                         class="item-icon pixelated"
+                         alt="item">
+
                     <div class="item-count" *ngIf="inventoryService.getSlot(i).count > 1">
                         {{ inventoryService.getSlot(i).count }}
                     </div>
@@ -67,10 +76,13 @@
                 <div class="slot" 
                      [class.selected-hotbar]="i === inventoryService.selectedHotbarIndex()"
                      (mousedown)="onSlotClick(i, $event)">
-                    <div class="item-icon" *ngIf="inventoryService.getSlot(i).item as item"
-                        [style.background-image]="getSlotImage(item) ? 'url(' + getSlotImage(item) + ')' : null"
-                        [style.background-color]="getSlotColor(item)">
-                    </div>
+                    
+                    <!-- Item Icon -->
+                    <img *ngIf="inventoryService.getSlot(i).item as item" 
+                         [src]="getSlotImage(item)"
+                         class="item-icon pixelated"
+                         alt="item">
+
                     <div class="item-count" *ngIf="inventoryService.getSlot(i).count > 1">
                         {{ inventoryService.getSlot(i).count }}
                     </div>
@@ -85,10 +97,12 @@
   <div class="held-item" *ngIf="inventoryService.heldItem().item"
        [style.left.px]="mouseX()" 
        [style.top.px]="mouseY()">
-       <div class="item-icon"
-            [style.background-image]="getSlotImage(inventoryService.heldItem().item) ? 'url(' + getSlotImage(inventoryService.heldItem().item) + ')' : null"
-            [style.background-color]="getSlotColor(inventoryService.heldItem().item)">
-       </div>
+       
+       <!-- Item Icon -->
+       <img [src]="getSlotImage(inventoryService.heldItem().item)"
+            class="item-icon pixelated"
+            alt="held item">
+
        <div class="item-count" *ngIf="inventoryService.heldItem().count > 1">
          {{ inventoryService.heldItem().count }}
        </div>

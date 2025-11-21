@@ -21,10 +21,28 @@
             "tsConfig": "tsconfig.json",
             "assets": [
               "assets"
+            ],
+            "styles": [
+              "src/index.css"
             ]
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.ts"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "multiplayer": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.multiplayer.ts"
+                }
+              ],
               "outputHashing": "all"
             },
             "development": {

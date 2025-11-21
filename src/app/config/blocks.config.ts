@@ -103,6 +103,10 @@ export const BLOCKS: Record<string, BlockDefinition> = {
             }
         },
     },
+    oak_planks: {
+        drops: { item: 'oak_planks', count: 1 },
+        texture: 'assets/textures/oak_planks.png',
+    },
     leaves: {
         tick: true,
         faces: {

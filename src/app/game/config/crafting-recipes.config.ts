@@ -19,14 +19,14 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     type: 'shapeless',
     maxGridSize: 2,
     ingredients: ['wood'],
-    result: { item: 'plank', count: 4 }
+    result: { item: 'oak_planks', count: 4 }
   },
   {
     id: 'stick',
     type: 'shaped',
     maxGridSize: 2,
     pattern: ['P', 'P'],
-    key: { P: 'plank' },
+    key: { P: 'oak_planks' },
     result: { item: 'stick', count: 4 }
   },
   {
@@ -34,7 +34,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     type: 'shaped',
     maxGridSize: 2,
     pattern: ['PP', 'PP'],
-    key: { P: 'plank' },
+    key: { P: 'oak_planks' },
     result: { item: 'workbench', count: 1 }
   },
   {
@@ -50,7 +50,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     type: 'shaped',
     maxGridSize: 3,
     pattern: ['PPP', ' S ', ' S '],
-    key: { P: 'plank', S: 'stick' },
+    key: { P: 'oak_planks', S: 'stick' },
     result: { item: 'wooden_pickaxe', count: 1 }
   },
   {
@@ -58,7 +58,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     type: 'shaped',
     maxGridSize: 3,
     pattern: ['PP', 'PS', ' S'],
-    key: { P: 'plank', S: 'stick' },
+    key: { P: 'oak_planks', S: 'stick' },
     result: { item: 'wooden_axe', count: 1 }
   }
 ];

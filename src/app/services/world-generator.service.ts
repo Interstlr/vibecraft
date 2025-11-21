@@ -3,6 +3,7 @@ import { WORLD_CONFIG } from '../config/world.config';
 import { TreeGeneratorService, WorldBuilder } from './tree-generator.service';
 import { RiverGeneratorService } from './river-generator.service';
 import { TerrainCell, TerrainMap } from './world/terrain-map';
+import { Random } from '../utils/random';
 
 @Injectable({
   providedIn: 'root'
@@ -12,11 +13,11 @@ export class WorldGeneratorService {
   private riverGenerator = inject(RiverGeneratorService);
   private readonly spawnSafeRadius = WORLD_CONFIG.spawnSafeRadius ?? 12;
 
-  generate(world: WorldBuilder) {
-    const seed = Math.random() * 10000;
+  generate(world: WorldBuilder, seed: number) {
+    const random = new Random(seed);
     const terrainMap = this.generateTerrainMap(seed);
     this.carveRivers(terrainMap);
-    this.buildTerrain(terrainMap, world);
+    this.buildTerrain(terrainMap, world, random);
     this.createHouse(8, 1, 8, world);
   }
 
@@ -73,13 +74,13 @@ export class WorldGeneratorService {
     this.riverGenerator.carveRivers(map, config);
   }
 
-  private buildTerrain(map: TerrainMap, world: WorldBuilder) {
+  private buildTerrain(map: TerrainMap, world: WorldBuilder, random: Random) {
     map.forEach(cell => {
       if (cell.surface === 'water') {
         this.buildWaterColumn(cell, world);
       } else {
         this.buildLandColumn(cell, world);
-        this.trySpawnTree(cell, world);
+        this.trySpawnTree(cell, world, random);
       }
     });
   }
@@ -120,13 +121,13 @@ export class WorldGeneratorService {
     }
   }
 
-  private trySpawnTree(cell: TerrainCell, world: WorldBuilder) {
+  private trySpawnTree(cell: TerrainCell, world: WorldBuilder, random: Random) {
     if (cell.surface !== 'grass') return;
     if (cell.distanceToCenter <= this.spawnSafeRadius) return;
 
     const spawnChance = cell.biome === 'forest' ? 0.08 : 0.005;
-    if (Math.random() < spawnChance) {
-      this.treeGenerator.generate(cell.x, cell.height + 1, cell.z, world);
+    if (random.chance(spawnChance)) {
+      this.treeGenerator.generate(cell.x, cell.height + 1, cell.z, world, random);
     }
   }
 
