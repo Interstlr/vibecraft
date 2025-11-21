@@ -20,7 +20,6 @@ import { GAME_CONFIG } from '../config/game.config';
 
     <!-- Top Left Stats -->
     <div class="absolute top-5 left-5 text-white bg-black/50 p-4 rounded-lg pointer-events-none select-none">
-      <h2 class="m-0 mt-0 font-bold">Voxel Survival</h2>
       <p>FPS: {{ store.fps() }}</p>
       <p>Blocks: {{ store.blockCount() }}</p>
     </div>
@@ -57,7 +56,7 @@ import { GAME_CONFIG } from '../config/game.config';
 
     <!-- Instructions Overlay -->
     @if (store.showInstructions()) {
-      <div class="fixed top-0 left-0 w-full h-full bg-black/70 flex flex-col justify-center items-center text-white z-20 cursor-pointer backdrop-blur-sm"
+      <div class="fixed top-0 left-0 w-full h-full flex flex-col justify-center items-center text-white z-20 cursor-pointer"
            (click)="requestLock.emit()">
         <h1 class="text-4xl font-bold mb-4 animate-pulse">CLICK TO PLAY</h1>
         <div class="text-center space-y-2 text-lg font-mono bg-black/50 p-6 rounded-xl border border-white/20">

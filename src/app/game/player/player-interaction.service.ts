@@ -26,9 +26,9 @@ export class PlayerInteractionService {
     workbench: 2.0,
   };
 
-  private isMining = false;
+  private isMining = false; // Keeps track of if we are potentially mining (action held)
   private miningTimer = 0;
-  private raycasterThree = new THREE.Raycaster(); // Dedicated raycaster for mobs
+  private raycasterThree = new THREE.Raycaster();
 
   constructor(
     private blockPlacer: BlockPlacerService,
@@ -51,7 +51,8 @@ export class PlayerInteractionService {
     // Check for mob hit first
     if (this.checkMobHit()) {
         // If hit mob, don't mine block
-        this.isMining = false; 
+        // But keep isMining true in case we want to swing at mobs continuously or transition to block
+        // For now, similar to original logic, if we hit a mob, we don't start block mining this frame.
         return;
     }
 
@@ -63,14 +64,13 @@ export class PlayerInteractionService {
   }
 
   handlePrimaryActionUp() {
+    this.isMining = false; // Only stop when released
     this.toolRenderer.setSwinging(false);
-    this.stopMining();
+    this.miningTimer = 0;
+    this.crackOverlay.hide();
   }
 
   handleSecondaryAction() {
-    // Simple check for mobs interaction if needed (e.g. feeding), 
-    // but for now just blocks
-    
     const hitPos = this.raycaster.getHitBlockPosition();
     if (!hitPos) {
       return;
@@ -78,9 +78,7 @@ export class PlayerInteractionService {
 
     const block = this.blockPlacer.getBlock(hitPos.x, hitPos.y, hitPos.z);
     if (block?.type === 'workbench') {
-      // Temporarily disabled or use new UI
-      // this.store.openWorkbenchMenu(); 
-      this.store.openInventoryMenu(); // Open inventory instead since we have 2x2
+      this.store.openInventoryMenu();
       this.input.unlockPointer();
       return;
     }
@@ -88,7 +86,7 @@ export class PlayerInteractionService {
     const selected = this.inventoryService.selectedItem();
     const type = selected.item;
 
-    if (!type || type === 'axe') { // Simple check, ideally check isTool
+    if (!type || type === 'axe') {
       return;
     }
 
@@ -102,10 +100,9 @@ export class PlayerInteractionService {
     // Check collision with player
     const playerPos = this.sceneManager.getCamera().position;
     const playerFeetY = playerPos.y - PLAYER_CONFIG.eyeHeight;
-    const playerRadius = PLAYER_CONFIG.collisionRadius; // 0.3
-    const playerHeight = 1.7; // Approx height
+    const playerRadius = PLAYER_CONFIG.collisionRadius; 
+    const playerHeight = 1.7;
 
-    // Block AABB
     const blockMinX = target.x - 0.5;
     const blockMaxX = target.x + 0.5;
     const blockMinY = target.y - 0.5;
@@ -113,7 +110,6 @@ export class PlayerInteractionService {
     const blockMinZ = target.z - 0.5;
     const blockMaxZ = target.z + 0.5;
 
-    // Player AABB
     const playerMinX = playerPos.x - playerRadius;
     const playerMaxX = playerPos.x + playerRadius;
     const playerMinY = playerFeetY;
@@ -121,7 +117,6 @@ export class PlayerInteractionService {
     const playerMinZ = playerPos.z - playerRadius;
     const playerMaxZ = playerPos.z + playerRadius;
 
-    // Intersection check
     const intersects = (
         playerMinX < blockMaxX && playerMaxX > blockMinX &&
         playerMinY < blockMaxY && playerMaxY > blockMinY &&
@@ -136,7 +131,6 @@ export class PlayerInteractionService {
     const ty = Math.round(target.y);
     const tz = Math.round(target.z);
 
-    // workbench special handling removed as it's just a block now
     if (this.blockPlacer.addBlock(tx, ty, tz, type)) {
         this.inventoryService.removeOneFromSelected();
     }
@@ -148,19 +142,26 @@ export class PlayerInteractionService {
     }
 
     const hitPos = this.raycaster.getHitBlockPosition();
+    
+    // If we are looking at nothing, hide overlay but keep isMining true
     if (!hitPos) {
-      this.stopMining();
+      this.miningTimer = 0;
+      this.crackOverlay.hide();
       return;
     }
 
     const key = this.getKey(hitPos.x, hitPos.y, hitPos.z);
     const block = this.blockPlacer.getBlock(hitPos.x, hitPos.y, hitPos.z);
+    
+    // If block vanished (or air), hide overlay
     if (!block) {
-      this.stopMining();
+      this.miningTimer = 0;
+      this.crackOverlay.hide();
       return;
     }
 
     const activeKey = this.crackOverlay.getActiveBlockKey();
+    // If we switched blocks, reset timer
     if (activeKey && activeKey !== key) {
       this.miningTimer = 0;
     }
@@ -183,44 +184,38 @@ export class PlayerInteractionService {
         this.spawnBlockDrop(hitPos.x, hitPos.y, hitPos.z, block.type);
         this.blockPlacer.removeBlock(hitPos.x, hitPos.y, hitPos.z);
       }
-      this.stopMining();
+      
+      // Reset for next block
+      this.miningTimer = 0;
+      this.crackOverlay.hide(); 
+      // Do NOT set isMining = false, allowing continuous mining
     }
   }
 
   private checkMobHit(): boolean {
-      // Very simple mob hit check
-      // Ideally this would use the actual scene meshes, but we don't have easy access to them map here 
-      // without injecting renderer. 
-      // For now, let's do a mathematical ray-sphere intersection against chickens.
-      
       const chickens = this.chickenSystem.getChickens();
       const camera = this.sceneManager.getCamera();
       const origin = camera.position.clone();
       const dir = new THREE.Vector3();
       camera.getWorldDirection(dir);
       
-      // Ray
       const maxDist = 4.0;
       let closestDist = maxDist;
       let hitId: string | null = null;
       
       for (const chicken of chickens) {
-          // Approximate chicken as sphere radius 0.4 centered at position + 0.35y
           const center = chicken.position.clone().add(new THREE.Vector3(0, 0.35, 0));
           const radius = 0.4;
           
-          // Ray-sphere intersection
           const m = origin.clone().sub(center);
           const b = m.dot(dir);
           const c = m.dot(m) - radius * radius;
           
-          // If ray starts outside sphere (c > 0) and points away (b > 0), miss
           if (c > 0 && b > 0) continue;
           
           const discr = b * b - c;
           if (discr < 0) continue;
           
-          // Hit
           let t = -b - Math.sqrt(discr);
           if (t < 0) t = -b + Math.sqrt(discr);
           
@@ -232,8 +227,6 @@ export class PlayerInteractionService {
       
       if (hitId) {
           this.chickenSystem.damageChicken(hitId);
-          // Play hit sound?
-          // Knockback is handled in panic logic (run away), but instant velocity impulse would be better
           return true;
       }
       
@@ -267,9 +260,8 @@ export class PlayerInteractionService {
   }
 
   private stopMining() {
-    this.isMining = false;
-    this.miningTimer = 0;
-    this.crackOverlay.hide();
+      // Removed in favor of direct property access in handlePrimaryActionUp
+      // to clarify intent of not stopping continuously.
   }
 
   private getKey(x: number, y: number, z: number): string {
