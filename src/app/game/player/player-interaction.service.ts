@@ -10,7 +10,7 @@ import { SceneManagerService } from '../core/scene-manager.service';
 import { InputManagerService } from '../core/input-manager.service';
 import { ItemDropSystemService } from '../systems/item-drop-system.service';
 import { ChickenSystemService } from '../systems/chicken-system.service';
-import { BLOCKS } from '../../config/blocks.config';
+import { BLOCKS } from '../config/blocks.config';
 import { PLAYER_CONFIG } from '../../config/player.config';
 
 @Injectable({
@@ -269,8 +269,8 @@ export class PlayerInteractionService {
 
   private spawnBlockDrop(x: number, y: number, z: number, type: string) {
     const blockDef = BLOCKS[type];
-    const dropItem = blockDef?.drops?.item ?? type;
-    const dropCount = blockDef?.drops?.count ?? 1;
+    const dropItem = blockDef?.drops ?? type;
+    const dropCount = 1;
 
     for (let i = 0; i < dropCount; i++) {
       this.itemDropSystem.spawnDrop(dropItem, new THREE.Vector3(x + 0.5, y + 0.5, z + 0.5));
