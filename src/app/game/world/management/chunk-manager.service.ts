@@ -4,12 +4,14 @@ import { WorldGeneratorService } from '../generation/world-generator.service';
 import { BlockPlacerService } from '../block-placer.service';
 import { WorldBuilder } from '../generation/tree-generator.service';
 
+import { InstancedRendererService } from '../../rendering/instanced-renderer.service';
+
 @Injectable({
   providedIn: 'root'
 })
 export class ChunkManagerService implements WorldBuilder {
   private readonly CHUNK_SIZE = 16;
-  private readonly RENDER_DISTANCE = 3; // Radius in chunks
+  private readonly RENDER_DISTANCE = 8; // Radius in chunks (8 * 16 = 128 blocks)
   private readonly WORLD_SIZE_CHUNKS = 100; // Total width/depth in chunks
   private readonly HALF_WORLD_SIZE = Math.floor(this.WORLD_SIZE_CHUNKS / 2);
   
@@ -18,7 +20,8 @@ export class ChunkManagerService implements WorldBuilder {
 
   constructor(
     private worldGenerator: WorldGeneratorService,
-    private blockPlacer: BlockPlacerService
+    private blockPlacer: BlockPlacerService,
+    private instancedRenderer: InstancedRendererService
   ) {}
 
   // WorldBuilder implementation
@@ -81,6 +84,7 @@ export class ChunkManagerService implements WorldBuilder {
 
   loadChunk(cx: number, cz: number, seed: number) {
     this.worldGenerator.generateChunk(cx, cz, this, seed);
+    this.instancedRenderer.syncCounts();
   }
 
   unloadChunk(cx: number, cz: number) {

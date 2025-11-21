@@ -12,7 +12,7 @@ export const WORLD_CONFIG = {
   },
   
   // Visuals
-  fogNear: 20,
-  fogFar: 100,
+  fogNear: 60,
+  fogFar: 120, // Slightly less than RENDER_DISTANCE (8*16 = 128) to hide chunk pop-in
   backgroundColor: 0x87CEEB
 };
