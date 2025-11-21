@@ -92,7 +92,7 @@ export class GameLoopService {
     pickedUpIds.forEach((id) => {
       const drop = this.itemDropSystem.getDropById(id);
       if (drop) {
-        this.inventoryStackService.addItem(drop.type, 1);
+        this.inventoryStackService.addItem(drop.type, drop.count);
         this.itemDropRenderer.removeDrop(id);
         this.itemDropSystem.removeDrop(id);
       }
