@@ -16,6 +16,7 @@ import { InventoryInitService } from '../inventory/inventory-init.service';
 import { ChickenSystemService } from '../systems/chicken-system.service';
 import { ChickenRendererService } from '../rendering/chicken-renderer.service';
 import { ChunkManagerService } from '../world/management/chunk-manager.service';
+import { InstancedRendererService } from '../rendering/instanced-renderer.service';
 
 @Injectable({
   providedIn: 'root',
@@ -44,7 +45,8 @@ export class GameLoopService {
     private inventoryInit: InventoryInitService,
     private chickenSystem: ChickenSystemService,
     private chickenRenderer: ChickenRendererService,
-    private chunkManager: ChunkManagerService
+    private chunkManager: ChunkManagerService,
+    private instancedRenderer: InstancedRendererService
   ) {}
 
   start() {
@@ -114,6 +116,7 @@ export class GameLoopService {
     this.grassSystem.update(delta);
     this.leavesSystem.update(delta);
     this.skyRenderer.update();
+    this.instancedRenderer.syncCounts();
     this.sceneManager.render();
   };
 }
