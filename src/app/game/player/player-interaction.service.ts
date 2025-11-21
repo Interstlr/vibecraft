@@ -17,16 +17,6 @@ import { PLAYER_CONFIG } from '../../config/player.config';
   providedIn: 'root',
 })
 export class PlayerInteractionService {
-  private readonly MINING_SPEEDS: Record<string, number> = {
-    wood: 2.0,
-    oak_planks: 2.0,
-    leaves: 0.2,
-    stone: 3.0,
-    dirt: 0.5,
-    grass: 0.5,
-    workbench: 2.0,
-  };
-
   private isMining = false; // Keeps track of if we are potentially mining (action held)
   private miningTimer = 0;
   private raycasterThree = new THREE.Raycaster();
@@ -167,7 +157,16 @@ export class PlayerInteractionService {
       this.miningTimer = 0;
     }
 
-    let baseSpeed = this.MINING_SPEEDS[block.type] ?? 1.0;
+    const blockDef = BLOCKS[block.type];
+    let baseSpeed = blockDef?.hardness ?? 1.0;
+    
+    // Unbreakable blocks
+    if (baseSpeed < 0) {
+        this.miningTimer = 0;
+        this.crackOverlay.hide();
+        return;
+    }
+
     const selected = this.inventoryService.selectedItem();
     const toolType = selected.item;
 
