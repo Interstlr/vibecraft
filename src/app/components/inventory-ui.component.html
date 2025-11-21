@@ -14,7 +14,10 @@
                  [style.grid-template-columns]="'repeat(' + inventoryService.craftingGridSize() + ', 36px)'"
                  [style.grid-template-rows]="'repeat(' + inventoryService.craftingGridSize() + ', 36px)'">
                 <div class="slot" *ngFor="let i of craftingIndices()" 
-                    (mousedown)="onSlotClick(i, $event)">
+                    (mousedown)="onSlotClick(i, $event)"
+                    (mouseenter)="onSlotMouseEnter(i, $event)"
+                    (mousemove)="onSlotMouseMove($event)"
+                    (mouseleave)="onSlotMouseLeave()">
                     
                     <!-- Item Icon -->
                     <img *ngIf="inventoryService.getSlot(i).item as item" 
@@ -28,7 +31,11 @@
                 </div>
             </div>
             <div class="crafting-arrow">➔</div>
-            <div class="slot result-slot" (mousedown)="onSlotClick(resultSlotIndex(), $event)">
+            <div class="slot result-slot" 
+                 (mousedown)="onSlotClick(resultSlotIndex(), $event)"
+                 (mouseenter)="onSlotMouseEnter(resultSlotIndex(), $event)"
+                 (mousemove)="onSlotMouseMove($event)"
+                 (mouseleave)="onSlotMouseLeave()">
                 
                 <!-- Item Icon -->
                 <img *ngIf="inventoryService.getSlot(resultSlotIndex()).item as item" 
@@ -53,7 +60,11 @@
                 18,19,20,21,22,23,24,25,26,
                 27,28,29,30,31,32,33,34,35
             ]">
-                <div class="slot" (mousedown)="onSlotClick(i, $event)">
+                <div class="slot" 
+                     (mousedown)="onSlotClick(i, $event)"
+                     (mouseenter)="onSlotMouseEnter(i, $event)"
+                     (mousemove)="onSlotMouseMove($event)"
+                     (mouseleave)="onSlotMouseLeave()">
                     
                     <!-- Item Icon -->
                     <img *ngIf="inventoryService.getSlot(i).item as item" 
@@ -75,7 +86,10 @@
             <ng-container *ngFor="let i of [0,1,2,3,4,5,6,7,8]">
                 <div class="slot" 
                      [class.selected-hotbar]="i === inventoryService.selectedHotbarIndex()"
-                     (mousedown)="onSlotClick(i, $event)">
+                     (mousedown)="onSlotClick(i, $event)"
+                     (mouseenter)="onSlotMouseEnter(i, $event)"
+                     (mousemove)="onSlotMouseMove($event)"
+                     (mouseleave)="onSlotMouseLeave()">
                     
                     <!-- Item Icon -->
                     <img *ngIf="inventoryService.getSlot(i).item as item" 
@@ -106,5 +120,13 @@
        <div class="item-count" *ngIf="inventoryService.heldItem().count > 1">
          {{ inventoryService.heldItem().count }}
        </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="tooltip" 
+       *ngIf="tooltipVisible() && tooltipItem()"
+       [style.left.px]="tooltipX() + 10"
+       [style.top.px]="tooltipY() + 10">
+    {{ getItemDisplayName(tooltipItem()) }}
   </div>
 </div>

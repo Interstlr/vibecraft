@@ -28,6 +28,12 @@ export class InventoryUiComponent {
   
   mouseX = signal(0);
   mouseY = signal(0);
+  
+  // Tooltip state
+  tooltipVisible = signal(false);
+  tooltipItem = signal<string | null>(null);
+  tooltipX = signal(0);
+  tooltipY = signal(0);
 
   craftingIndices = computed(() => {
     if (this.inventoryService.craftingGridSize() === 2) {
@@ -60,6 +66,41 @@ export class InventoryUiComponent {
      // Actually, BlockIconService returns data URL, so this color might be behind the image or unused if image covers it.
      if (!item) return 'transparent';
      return 'transparent'; 
+  }
+
+  getItemDisplayName(item: string | null): string {
+    if (!item) return '';
+    
+    // Format item ID to display name
+    // "wooden_axe" -> "Wooden Axe"
+    // "oak_planks" -> "Oak Planks"
+    // "stone_pickaxe" -> "Stone Pickaxe"
+    return item
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  onSlotMouseEnter(slotIndex: number, event: MouseEvent) {
+    const slot = this.inventoryService.getSlot(slotIndex);
+    if (slot.item) {
+      this.tooltipItem.set(slot.item);
+      this.tooltipX.set(event.clientX);
+      this.tooltipY.set(event.clientY);
+      this.tooltipVisible.set(true);
+    }
+  }
+
+  onSlotMouseMove(event: MouseEvent) {
+    if (this.tooltipVisible()) {
+      this.tooltipX.set(event.clientX);
+      this.tooltipY.set(event.clientY);
+    }
+  }
+
+  onSlotMouseLeave() {
+    this.tooltipVisible.set(false);
+    this.tooltipItem.set(null);
   }
 
   onSlotClick(index: number, event: MouseEvent) {

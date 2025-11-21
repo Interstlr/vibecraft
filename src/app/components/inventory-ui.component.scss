@@ -140,3 +140,21 @@
     margin-bottom: 4px;
 }
 
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  padding: 6px 10px;
+  border: 2px solid;
+  border-color: #ffffff #555555 #555555 #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+  pointer-events: none;
+  z-index: 4000;
+  white-space: nowrap;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  image-rendering: pixelated;
+}
+

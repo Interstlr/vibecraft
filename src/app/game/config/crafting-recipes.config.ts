@@ -60,5 +60,53 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     pattern: ['PP', 'PS', ' S'],
     key: { P: 'oak_planks', S: 'stick' },
     result: { item: 'wooden_axe', count: 1 }
+  },
+  {
+    id: 'wooden_shovel',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: [' P ', ' S ', ' S '],
+    key: { P: 'oak_planks', S: 'stick' },
+    result: { item: 'wooden_shovel', count: 1 }
+  },
+  {
+    id: 'wooden_sword',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: [' P ', ' P ', ' S '],
+    key: { P: 'oak_planks', S: 'stick' },
+    result: { item: 'wooden_sword', count: 1 }
+  },
+  {
+    id: 'stone_pickaxe',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: ['SSS', ' S ', ' S '],
+    key: { S: 'stone' },
+    result: { item: 'stone_pickaxe', count: 1 }
+  },
+  {
+    id: 'stone_axe',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: ['SS', 'SS', ' S'],
+    key: { S: 'stone' },
+    result: { item: 'stone_axe', count: 1 }
+  },
+  {
+    id: 'stone_shovel',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: [' S ', ' S ', ' S '],
+    key: { S: 'stone' },
+    result: { item: 'stone_shovel', count: 1 }
+  },
+  {
+    id: 'stone_sword',
+    type: 'shaped',
+    maxGridSize: 3,
+    pattern: [' S ', ' S ', ' H '],
+    key: { S: 'stone', H: 'stick' },
+    result: { item: 'stone_sword', count: 1 }
   }
 ];

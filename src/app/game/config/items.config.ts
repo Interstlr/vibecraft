@@ -23,5 +23,19 @@ export const ITEMS_CONFIG: Record<string, ItemConfig> = {
   pickaxe:  { maxStack: 1 },
   axe:      { maxStack: 1 },
   shovel:   { maxStack: 1 },
+  
+  // Wooden tools
+  wooden_axe:      { maxStack: 1 },
+  wooden_pickaxe:  { maxStack: 1 },
+  wooden_shovel:   { maxStack: 1 },
+  wooden_sword:    { maxStack: 1 },
+  
+  // Stone tools
+  stone_pickaxe:  { maxStack: 1 },
+  stone_axe:      { maxStack: 1 },
+  stone_shovel:   { maxStack: 1 },
+  stone_sword:    { maxStack: 1 },
+  
+  oak_planks: { maxStack: 64 },
 } as const;
 

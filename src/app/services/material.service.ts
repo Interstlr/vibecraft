@@ -17,7 +17,26 @@ export class MaterialService {
   }
 
   getMaterial(type: string): THREE.Material | THREE.Material[] {
-    return this.materials[type] || this.materials['grass'];
+    // If material exists, return it
+    if (this.materials[type]) {
+      return this.materials[type];
+    }
+    
+    // For items that might not be in BLOCKS, try to create material on the fly
+    // This handles items like 'stick' that might be added later
+    const blockDef = BLOCKS[type];
+    if (blockDef) {
+      // Material will be created in initMaterials, but if called before init, create it here
+      return this.materials[type] || this.createFallbackMaterial(type);
+    }
+    
+    // Fallback to grass material (will show grass texture/color if item not found)
+    return this.materials['grass'] || this.createFallbackMaterial('grass');
+  }
+
+  private createFallbackMaterial(type: string): THREE.Material {
+    // Create a simple fallback material
+    return new THREE.MeshLambertMaterial({ color: 0x888888 });
   }
 
   getAllMaterials() {
@@ -31,8 +50,16 @@ export class MaterialService {
             if (key === 'hover') {
                 this.materials[key] = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
             } else if (def.procedural?.type === 'flat') {
-                 this.materials[key] = new THREE.MeshLambertMaterial({ color: def.procedural.color1 });
+                 const colorHex = this.parseColor(def.procedural.color1);
+                 this.materials[key] = new THREE.MeshLambertMaterial({ color: colorHex });
             }
+            return;
+        }
+        
+        // Handle items with procedural config (like stick) that are not tools
+        if (def.procedural && !def.texture && !def.faces) {
+            const colorHex = this.parseColor(def.procedural.color1);
+            this.materials[key] = new THREE.MeshLambertMaterial({ color: colorHex });
             return;
         }
 
@@ -132,5 +159,14 @@ export class MaterialService {
     texture.magFilter = THREE.NearestFilter;
     texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
+  }
+
+  private parseColor(colorString: string): number {
+    // Parse color string like '#8D6E63' to hex number
+    if (colorString.startsWith('#')) {
+      return parseInt(colorString.slice(1), 16);
+    }
+    // Fallback to gray
+    return 0x888888;
   }
 }
