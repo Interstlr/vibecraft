@@ -71,21 +71,36 @@ export class WorldGeneratorService {
     }
 
     // Fractional Brownian Motion
-    let amplitude = 16;
-    let frequency = 0.02;
+    // First, generate a "continentalness" or "roughness" map
+    // Low frequency noise to determine if we are in a flat area or mountain area
+    const roughness = this.noise2D(x * 0.001, z * 0.001); // -1 to 1
+    
+    // Map roughness to an amplitude multiplier
+    // If roughness > 0, we get mountains. If < 0, plains/hills.
+    // Normalize -1..1 to 0..1
+    const mountainFactor = (roughness + 1) / 2;
+    
+    // Non-linear curve to make mountains rarer but higher
+    // x^3 curve: 0->0, 0.5->0.125, 1->1
+    const heightMultiplier = Math.pow(mountainFactor, 3);
+    
+    // Dynamic amplitude: Plains ~12, Mountains ~80
+    let amplitude = 12 + (heightMultiplier * 80);
+    
+    let frequency = 0.005; // Lower frequency for wider mountains
     let noiseValue = 0;
     
-    // 4 Octaves for more natural terrain
+    // 4 Octaves
     for(let i = 0; i < 4; i++) {
         noiseValue += this.noise2D(x * frequency, z * frequency) * amplitude;
-        amplitude *= 0.5;
-        frequency *= 2;
+        amplitude *= 0.4; // Reduce amplitude faster for detail
+        frequency *= 2.5; // Increase frequency faster for detail
     }
     
-    // Base height + noise. Shift up to avoid water level if we had one.
-    const baseHeight = 25; 
+    // Base height also varies slightly with roughness to lift mountains up
+    const baseHeight = 30 + (heightMultiplier * 30); 
     
-    return Math.max(2, Math.floor(baseHeight + noiseValue));
+    return Math.max(5, Math.floor(baseHeight + noiseValue));
   }
 
   private trySpawnTree(x: number, surfaceY: number, z: number, world: WorldBuilder, seed: number) {
