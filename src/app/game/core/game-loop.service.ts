@@ -15,6 +15,7 @@ import { InventoryStackService } from '../inventory/inventory-stack.service';
 import { InventoryInitService } from '../inventory/inventory-init.service';
 import { ChickenSystemService } from '../systems/chicken-system.service';
 import { ChickenRendererService } from '../rendering/chicken-renderer.service';
+import { ChunkManagerService } from '../world/management/chunk-manager.service';
 
 @Injectable({
   providedIn: 'root',
@@ -23,6 +24,7 @@ export class GameLoopService {
   private animationId = 0;
   private running = false;
   private prevTime = performance.now();
+  private chunkUpdateTimer = 0;
 
   constructor(
     private sceneManager: SceneManagerService,
@@ -41,7 +43,8 @@ export class GameLoopService {
     // Inject init service to ensure it runs
     private inventoryInit: InventoryInitService,
     private chickenSystem: ChickenSystemService,
-    private chickenRenderer: ChickenRendererService
+    private chickenRenderer: ChickenRendererService,
+    private chunkManager: ChunkManagerService
   ) {}
 
   start() {
@@ -69,8 +72,16 @@ export class GameLoopService {
 
     this.animationId = requestAnimationFrame(this.animate);
     const time = performance.now();
-    const delta = (time - this.prevTime) / 1000;
+    // Clamp delta to max 0.1s to prevent physics tunneling during lag spikes
+    const delta = Math.min((time - this.prevTime) / 1000, 0.1);
     this.prevTime = time;
+
+    // Chunk update throttle (every 0.5s)
+    this.chunkUpdateTimer += delta;
+    if (this.chunkUpdateTimer >= 0.5) {
+      this.chunkUpdateTimer = 0;
+      this.chunkManager.update(this.playerController.position);
+    }
 
     if (Math.random() > 0.95 && delta > 0) {
       this.store.fps.set(Math.round(1 / delta));

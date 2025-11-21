@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { TerrainMap } from './world/terrain-map';
+import { TerrainMap } from '../../../services/world/terrain-map';
 
 type Edge = 'north' | 'south' | 'east' | 'west';
 

@@ -1,7 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
-import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../config/blocks.config';
+import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../../../config/blocks.config';
 
 @Injectable({
   providedIn: 'root'

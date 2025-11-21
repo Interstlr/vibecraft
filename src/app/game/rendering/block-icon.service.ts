@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
-import { MaterialService } from '../../services/material.service';
+import { MaterialService } from '../world/resources/material.service';
 import { BLOCKS } from '../../config/blocks.config';
 
 @Injectable({

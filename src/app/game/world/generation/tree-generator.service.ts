@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Random } from '../utils/random';
+import { Random } from '../../../utils/random';
 
 export interface WorldBuilder {
   addBlock(x: number, y: number, z: number, type: string): void;

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { SceneManagerService } from '../core/scene-manager.service';
-import { MaterialService } from '../../services/material.service';
+import { MaterialService } from '../world/resources/material.service';
 import { WORLD_CONFIG } from '../../config/world.config';
 
 @Injectable({

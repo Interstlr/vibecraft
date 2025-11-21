@@ -97,6 +97,40 @@ export class BlockPlacerService {
     return block;
   }
 
+  removeBlocksInChunk(chunkX: number, chunkZ: number) {
+    const toRemove: string[] = [];
+    const CHUNK_SIZE = 16;
+
+    // Iterate all blocks to find ones in this chunk
+    // Note: Optimization would be to store blocks by chunk key
+    for (const key of this.blockData.keys()) {
+        const [xStr, , zStr] = key.split(',');
+        const x = parseInt(xStr);
+        const z = parseInt(zStr);
+        
+        // Check if block belongs to chunk
+        if (Math.floor(x / CHUNK_SIZE) === chunkX && Math.floor(z / CHUNK_SIZE) === chunkZ) {
+            toRemove.push(key);
+        }
+    }
+
+    // Batch remove
+    let removedCount = 0;
+    for (const key of toRemove) {
+        const block = this.blockData.get(key);
+        if (block) {
+             this.instancedRenderer.removeInstance(block.type, block.instanceId);
+             this.blockData.delete(key);
+             removedCount++;
+        }
+    }
+
+    if (removedCount > 0) {
+        this.store.blockCount.set(this.blockData.size);
+        console.log(`Removed ${removedCount} blocks from chunk ${chunkX},${chunkZ}`);
+    }
+  }
+
   replaceBlock(x: number, y: number, z: number, newType: string, broadcast: boolean = true) {
     const existing = this.blockData.get(this.getKey(x, y, z));
     if (!existing || existing.type === newType) {
