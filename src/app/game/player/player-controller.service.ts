@@ -107,6 +107,16 @@ export class PlayerControllerService {
       this.lastSentTime = now;
     }
   }
+  
+  // Force send update immediately (e.g. on spawn or teleport)
+  forceSendUpdate() {
+    const camera = this.sceneManager.getCamera();
+    this.multiplayer.sendMove(
+      camera.position,
+      camera.rotation,
+      this.inventory.selectedItem().item
+    );
+  }
 
   private hasCollision(position: THREE.Vector3): boolean {
     const r = PLAYER_CONFIG.collisionRadius;

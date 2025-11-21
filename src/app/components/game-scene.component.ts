@@ -91,10 +91,24 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
           // Wait for seed from server
           this.multiplayer.worldSeed$.pipe(take(1)).subscribe(seed => {
               this.generateWorld(seed);
+              
+              // Spawn logic
+              // Find a safe surface Y at spawn (0,0)
+              // We need to ensure world is generated first
+              const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
+              this.sceneManager.getCamera().position.set(0, spawnY, 0);
+              this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
+              
+              // Force send initial position so others see us at spawn immediately
+              this.playerController.forceSendUpdate();
           });
       } else {
           // Generate random seed locally
-          this.generateWorld(Math.random() * 10000);
+          const seed = Math.random() * 10000;
+          this.generateWorld(seed);
+          const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
+          this.sceneManager.getCamera().position.set(0, spawnY, 0);
+          this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
       }
   }
 

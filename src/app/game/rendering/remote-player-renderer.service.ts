@@ -53,20 +53,34 @@ export class RemotePlayerRendererService {
     // Head
     const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
     const head = new THREE.Mesh(headGeo, skinMat);
-    // Adjust Y so feet (0,0,0) are at position Y
-    // Total height ~1.8
-    // Center of group is at feet position (data.position)
-    // Head center Y: 1.8 - 0.25 = 1.55 (approx)
-    // Adjust for eyeHeight if data.position is eye pos?
-    // PlayerController sends camera position (eyes).
-    // So group position = eye position.
-    // We need to move model DOWN so eyes are at 0.
-    // Eye height ~1.6
-    
     const eyeHeightOffset = -1.6;
 
     head.position.y = 1.5 + 0.25 + eyeHeightOffset; 
+    
+    // Eyes (White part)
+    const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.05);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pupilGeo = new THREE.BoxGeometry(0.05, 0.05, 0.06);
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+    // Right Eye
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.1, 0, -0.25); // Front is -Z
+    const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    rightPupil.position.set(0.02, 0, 0.01); // Relative to eye
+    rightEye.add(rightPupil);
+    head.add(rightEye);
+
+    // Left Eye
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.1, 0, -0.25);
+    const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+    leftPupil.position.set(0.02, 0, 0.01);
+    leftEye.add(leftPupil);
+    head.add(leftEye);
+
     group.add(head);
+    group.userData['head'] = head;
 
     // Body
     const bodyGeo = new THREE.BoxGeometry(0.5, 0.75, 0.25);
@@ -97,10 +111,47 @@ export class RemotePlayerRendererService {
     // Item in hand (right arm)
     const itemGroup = new THREE.Group();
     itemGroup.position.set(0.375, 0.75 + eyeHeightOffset, 0.25); 
-    group.add(itemGroup);
     
-    // Save reference to item group in userData for updates
+    // Pivot points for animation
+    // We need to rotate around the shoulder/hip joint
+    // Currently pivot is center of geometry. 
+    // To fix this without complex hierarchy, we can set geometry transform or wrap in group.
+    // Easier way: Translate geometry so 0,0,0 is at the top.
+    armGeo.translate(0, -0.375, 0); // Center Y was 0, height 0.75. Now top is at 0.
+    legGeo.translate(0, -0.375, 0);
+
+    // Reposition meshes to account for new pivot (top of limb)
+    // Shoulder height: 0.75 + 0.75 + eyeHeightOffset = 1.5 + eyeHeightOffset (~ -0.1)
+    const shoulderY = 0.75 + 0.75 + eyeHeightOffset;
+    const hipY = 0.75 + eyeHeightOffset;
+
+    leftArm.position.set(-0.375, shoulderY, 0);
+    rightArm.position.set(0.375, shoulderY, 0);
+    
+    leftLeg.position.set(-0.125, hipY, 0);
+    rightLeg.position.set(0.125, hipY, 0);
+
+    // Re-add itemGroup to rightArm so it moves with it?
+    // Or just animate itemGroup separately matching right arm.
+    // Attaching to rightArm is better but scaling/rotation issues might occur if not careful.
+    // Let's just animate itemGroup position/rotation in sync.
+    // Actually, if we parent itemGroup to rightArm, it rotates with it.
+    // But rightArm is a Mesh, usually fine to add children.
+    // Item position relative to arm pivot (shoulder)
+    // Arm hangs down 0.75. Hand is at bottom.
+    itemGroup.position.set(0, -0.75, 0.25); 
+    rightArm.add(itemGroup);
+    
+    // Save reference to limbs
+    group.userData['leftArm'] = leftArm;
+    group.userData['rightArm'] = rightArm;
+    group.userData['leftLeg'] = leftLeg;
+    group.userData['rightLeg'] = rightLeg;
     group.userData['itemGroup'] = itemGroup;
+
+    // Animation state
+    group.userData['walkTime'] = 0;
+    group.userData['lastPos'] = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
 
     // Initial pos
     group.position.set(data.position.x, data.position.y, data.position.z);
@@ -126,13 +177,54 @@ export class RemotePlayerRendererService {
     }
 
     // Smooth interpolation could be added here, but for now direct set
-    group.position.set(data.position.x, data.position.y, data.position.z);
+    const lastPos = group.userData['lastPos'] as THREE.Vector3;
+    const currentPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
     
+    const distance = lastPos.distanceTo(currentPos);
+    const isMoving = distance > 0.01; // Threshold
+
+    group.position.copy(currentPos);
+    lastPos.copy(currentPos);
+
     // Rotation: Only Yaw (Y axis) usually matters for body
     group.rotation.y = data.rotation.y;
     
-    // Head rotation could be separated if we sent it.
-    // Simple walk animation could be added based on distance moved.
+    // Head rotation (Pitch - looking up/down)
+    const head = group.userData['head'] as THREE.Mesh;
+    if (head) {
+        head.rotation.x = data.rotation.x;
+    }
+
+    // Animation
+    const leftArm = group.userData['leftArm'] as THREE.Mesh;
+    const rightArm = group.userData['rightArm'] as THREE.Mesh;
+    const leftLeg = group.userData['leftLeg'] as THREE.Mesh;
+    const rightLeg = group.userData['rightLeg'] as THREE.Mesh;
+
+    if (isMoving) {
+        group.userData['walkTime'] += 0.4; // Speed of animation
+        const walkTime = group.userData['walkTime'];
+        const amplitude = 0.8; // Swing amount
+
+        // Arms swing opposite to legs
+        // Left Arm & Right Leg move together
+        // Right Arm & Left Leg move together
+        
+        leftArm.rotation.x = Math.cos(walkTime) * amplitude;
+        rightArm.rotation.x = Math.cos(walkTime + Math.PI) * amplitude;
+        
+        leftLeg.rotation.x = Math.cos(walkTime + Math.PI) * amplitude;
+        rightLeg.rotation.x = Math.cos(walkTime) * amplitude;
+    } else {
+        // Reset to idle
+        // Lerp back to 0 for smoothness? For now snap.
+        leftArm.rotation.x = 0;
+        rightArm.rotation.x = 0;
+        leftLeg.rotation.x = 0;
+        rightLeg.rotation.x = 0;
+        // Reset walk time so it starts consistent
+        group.userData['walkTime'] = 0;
+    }
     
     // Update item
     const itemGroup = group.userData['itemGroup'] as THREE.Group;

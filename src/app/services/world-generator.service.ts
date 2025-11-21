@@ -20,6 +20,12 @@ export class WorldGeneratorService {
     this.buildTerrain(terrainMap, world, random);
     this.createHouse(8, 1, 8, world);
   }
+  
+  getSurfaceHeight(x: number, z: number, seed: number): number {
+     const distanceToCenter = Math.sqrt(x * x + z * z);
+     const cell = this.createCell(x, z, seed);
+     return cell.height;
+  }
 
   private generateTerrainMap(seed: number): TerrainMap {
     const map = new TerrainMap(WORLD_CONFIG.size, this.spawnSafeRadius);
@@ -93,7 +99,7 @@ export class WorldGeneratorService {
 
     // Stone layer starting from the 3rd block from surface (height - 2)
     const stoneStart = cell.height - 2;
-    const stoneDepth = 30;
+    const stoneDepth = 15;
     for (let y = stoneStart; y > stoneStart - stoneDepth; y--) {
       world.addBlock(cell.x, y, cell.z, 'stone');
     }
@@ -115,7 +121,8 @@ export class WorldGeneratorService {
 
     // Stone layer under water
     const stoneStart = groundY - 2;
-    const stoneDepth = 30;
+    const stoneDepth = 15;
+
     for (let y = stoneStart; y > stoneStart - stoneDepth; y--) {
       world.addBlock(cell.x, y, cell.z, 'stone');
     }
