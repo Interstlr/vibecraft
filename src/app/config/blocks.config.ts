@@ -130,10 +130,16 @@ export const BLOCKS: Record<string, BlockDefinition> = {
         transparent: true
     },
     workbench: {
-        procedural: {
-            type: 'workbench',
-            color1: '#D2691E',
-            color2: '#A0522D'
+        faces: {
+            top: {
+                texture: 'assets/textures/workbench_top.png',
+            },
+            side: {
+                texture: 'assets/textures/workbench_side.webp',
+            },
+            bottom: {
+                texture: 'assets/textures/oak_planks.png',
+            }
         }
     },
     axe: {
