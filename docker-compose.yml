@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  minecraft-vibe:
+    build: .
+    container_name: minecraft-vibe
+    ports:
+      - "3000:3000"
+    volumes:
+      # Пробрасываем папку с кодом, чтобы работала горячая перезагрузка (HMR)
+      - .:/app
+      # Исключаем node_modules, чтобы использовать те, что внутри контейнера
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
