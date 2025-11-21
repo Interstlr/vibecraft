@@ -19,6 +19,8 @@ export class InstancedRendererService {
     WORLD_CONFIG.blockSize,
   );
   private _dummy = new THREE.Object3D();
+  // Flag to batch updates
+  private needsUpdate = new Set<string>();
 
   constructor(
     private sceneManager: SceneManagerService,
@@ -75,7 +77,9 @@ export class InstancedRendererService {
     this._dummy.scale.set(1, 1, 1);
     this._dummy.updateMatrix();
     mesh.setMatrixAt(instanceId, this._dummy.matrix);
-    mesh.instanceMatrix.needsUpdate = true;
+    
+    // Don't update immediately, mark as dirty
+    this.needsUpdate.add(type); 
     return instanceId;
   }
 
@@ -88,16 +92,22 @@ export class InstancedRendererService {
     this._dummy.scale.set(0, 0, 0);
     this._dummy.updateMatrix();
     mesh.setMatrixAt(instanceId, this._dummy.matrix);
-    mesh.instanceMatrix.needsUpdate = true;
+    
+    this.needsUpdate.add(type);
     this.freeInstanceIndices.get(type)?.push(instanceId);
   }
 
   syncCounts() {
-    this.instancedMeshes.forEach((mesh, type) => {
-      const nextIndex = this.nextInstanceIndex.get(type) || 0;
-      mesh.count = nextIndex;
-      mesh.instanceMatrix.needsUpdate = true;
+    // Apply batched updates
+    this.needsUpdate.forEach(type => {
+        const mesh = this.instancedMeshes.get(type);
+        if (mesh) {
+             mesh.instanceMatrix.needsUpdate = true;
+             if (mesh.count !== this.nextInstanceIndex.get(type)) {
+                 mesh.count = this.nextInstanceIndex.get(type) || 0;
+             }
+        }
     });
+    this.needsUpdate.clear();
   }
 }
-

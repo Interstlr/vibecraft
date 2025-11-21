@@ -15,7 +15,9 @@ export type BlockUpdateCallback = (x: number, y: number, z: number, type: string
 })
 export class BlockPlacerService {
   private blockData = new Map<string, BlockInstance>();
+  private chunkBlocks = new Map<string, Set<string>>(); // chunkKey -> Set<blockKey>
   private listeners: BlockUpdateCallback[] = [];
+  private readonly CHUNK_SIZE = 16;
 
   constructor(
     private instancedRenderer: InstancedRendererService,
@@ -33,6 +35,7 @@ export class BlockPlacerService {
 
   initialize() {
     this.blockData.clear();
+    this.chunkBlocks.clear();
     this.store.blockCount.set(0);
 
     // Listen to remote updates
@@ -44,9 +47,8 @@ export class BlockPlacerService {
       }
     });
 
-    // Apply initial world changes via ReplaySubject (handles race conditions)
+    // Apply initial world changes via ReplaySubject
     this.multiplayer.worldInitialized$.subscribe(changes => {
-      console.log('Received initial world changes:', Object.keys(changes).length);
       Object.values(changes || {}).forEach(data => {
         if (!data) return;
         if (data.action === 'add' && data.type) {
@@ -58,19 +60,32 @@ export class BlockPlacerService {
     });
   }
 
-  addBlock(x: number, y: number, z: number, type: string, broadcast: boolean = true): boolean {
+  addBlock(x: number, y: number, z: number, type: string, broadcast: boolean = true, silent: boolean = false): boolean {
     const key = this.getKey(x, y, z);
     if (this.blockData.has(key)) {
-      // If force replace or check mismatch? For now just return false
       return false;
     }
+    
+    // Try to place instance
     const instanceId = this.instancedRenderer.placeInstance(type, x, y, z);
     if (instanceId === null || instanceId === undefined) {
       return false;
     }
+
+    // Store block data
     this.blockData.set(key, { type, instanceId });
-    this.store.blockCount.set(this.blockData.size);
-    this.notify(x, y, z, type, 'add');
+    
+    // Index by chunk for fast removal
+    const chunkKey = this.getChunkKey(x, z);
+    if (!this.chunkBlocks.has(chunkKey)) {
+        this.chunkBlocks.set(chunkKey, new Set());
+    }
+    this.chunkBlocks.get(chunkKey)!.add(key);
+
+    if (!silent) {
+        this.store.blockCount.set(this.blockData.size);
+        this.notify(x, y, z, type, 'add');
+    }
     
     if (broadcast) {
       this.multiplayer.sendBlockUpdate(x, y, z, type, 'add');
@@ -85,8 +100,21 @@ export class BlockPlacerService {
     if (!block) {
       return null;
     }
+
+    // Remove from renderer
     this.instancedRenderer.removeInstance(block.type, block.instanceId);
+    
+    // Remove from indices
     this.blockData.delete(key);
+    const chunkKey = this.getChunkKey(x, z);
+    const chunkSet = this.chunkBlocks.get(chunkKey);
+    if (chunkSet) {
+        chunkSet.delete(key);
+        if (chunkSet.size === 0) {
+            this.chunkBlocks.delete(chunkKey);
+        }
+    }
+
     this.store.blockCount.set(this.blockData.size);
     this.notify(x, y, z, block.type, 'remove');
     
@@ -98,25 +126,15 @@ export class BlockPlacerService {
   }
 
   removeBlocksInChunk(chunkX: number, chunkZ: number) {
-    const toRemove: string[] = [];
-    const CHUNK_SIZE = 16;
+    const chunkKey = `${chunkX},${chunkZ}`;
+    const blockKeys = this.chunkBlocks.get(chunkKey);
+    
+    if (!blockKeys || blockKeys.size === 0) return;
 
-    // Iterate all blocks to find ones in this chunk
-    // Note: Optimization would be to store blocks by chunk key
-    for (const key of this.blockData.keys()) {
-        const [xStr, , zStr] = key.split(',');
-        const x = parseInt(xStr);
-        const z = parseInt(zStr);
-        
-        // Check if block belongs to chunk
-        if (Math.floor(x / CHUNK_SIZE) === chunkX && Math.floor(z / CHUNK_SIZE) === chunkZ) {
-            toRemove.push(key);
-        }
-    }
-
-    // Batch remove
     let removedCount = 0;
-    for (const key of toRemove) {
+    
+    // O(M) removal where M is blocks in chunk
+    for (const key of blockKeys) {
         const block = this.blockData.get(key);
         if (block) {
              this.instancedRenderer.removeInstance(block.type, block.instanceId);
@@ -125,9 +143,12 @@ export class BlockPlacerService {
         }
     }
 
+    // Clear the set and map entry
+    this.chunkBlocks.delete(chunkKey);
+
     if (removedCount > 0) {
         this.store.blockCount.set(this.blockData.size);
-        console.log(`Removed ${removedCount} blocks from chunk ${chunkX},${chunkZ}`);
+        // console.log(`Fast removed ${removedCount} blocks from chunk ${chunkX},${chunkZ}`);
     }
   }
 
@@ -163,5 +184,11 @@ export class BlockPlacerService {
 
   private getKey(x: number, y: number, z: number): string {
     return `${x},${y},${z}`;
+  }
+
+  private getChunkKey(x: number, z: number): string {
+      const cx = Math.floor(x / this.CHUNK_SIZE);
+      const cz = Math.floor(z / this.CHUNK_SIZE);
+      return `${cx},${cz}`;
   }
 }
