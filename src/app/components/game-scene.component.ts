@@ -1,8 +1,9 @@
 import { Component, ElementRef, ViewChild, AfterViewInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as THREE from 'three';
-import { WorldBuilder } from '../services/tree-generator.service';
-import { WorldGeneratorService } from '../services/world-generator.service';
+import { WorldBuilder } from '../game/world/generation/tree-generator.service';
+import { WorldGeneratorService } from '../game/world/generation/world-generator.service';
+import { ChunkManagerService } from '../game/world/management/chunk-manager.service';
 import { SceneManagerService } from '../game/core/scene-manager.service';
 import { InstancedRendererService } from '../game/rendering/instanced-renderer.service';
 import { HighlightRendererService } from '../game/rendering/highlight-renderer.service';
@@ -39,6 +40,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private playerInteraction = inject(PlayerInteractionService);
   private blockPlacer = inject(BlockPlacerService);
   private worldGenerator = inject(WorldGeneratorService);
+  private chunkManager = inject(ChunkManagerService);
   private gameLoop = inject(GameLoopService);
   private skyRenderer = inject(SkyRendererService);
   private playerController = inject(PlayerControllerService);
@@ -62,7 +64,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     this.blockPlacer.initialize();
     this.skyRenderer.initialize();
     this.chickenRenderer.initialize();
-    this.playerController.setSpawn(this.sceneManager.getCamera().position.clone());
 
     this.inputManager.initialize({
       onPrimaryDown: () => this.playerInteraction.handlePrimaryActionDown(),
@@ -71,9 +72,6 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
     });
 
     this.initializeWorld();
-    this.gameLoop.start();
-
-    this.chickenSystem.spawnChicken(new THREE.Vector3(1, 10, -3));
   }
 
   ngOnDestroy() {
@@ -87,38 +85,34 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   }
 
   private initializeWorld() {
-      if (environment.multiplayer) {
-          // Wait for seed from server
-          this.multiplayer.worldSeed$.pipe(take(1)).subscribe(seed => {
-              this.generateWorld(seed);
-              
-              // Spawn logic
-              // Find a safe surface Y at spawn (0,0)
-              // We need to ensure world is generated first
-              const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
-              this.sceneManager.getCamera().position.set(0, spawnY, 0);
-              this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
-              
-              // Force send initial position so others see us at spawn immediately
-              this.playerController.forceSendUpdate();
-          });
-      } else {
-          // Generate random seed locally
-          const seed = Math.random() * 10000;
-          this.generateWorld(seed);
-          const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
-          this.sceneManager.getCamera().position.set(0, spawnY, 0);
-          this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
-      }
-  }
+    const handleWorldInit = (seed: number) => {
+        this.chunkManager.setSeed(seed);
+        
+        // Force initial load around 0,0 (load all chunks immediately)
+        this.chunkManager.update(new THREE.Vector3(0, 0, 0), true);
+        this.instancedRenderer.syncCounts();
+        
+        // Spawn logic
+        const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
+        this.sceneManager.getCamera().position.set(0, spawnY, 0);
+        this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
+        
+        if (environment.multiplayer) {
+             this.playerController.forceSendUpdate();
+        }
 
-  private generateWorld(seed: number) {
-    const builder: WorldBuilder = {
-      addBlock: (x, y, z, type) => this.blockPlacer.addBlock(x, y, z, type, false), // false = no broadcast
-      hasBlock: (x, y, z) => this.blockPlacer.hasBlock(x, y, z),
+        // Start game loop only after world is ready
+        this.gameLoop.start();
+        this.chickenSystem.spawnChicken(new THREE.Vector3(1, spawnY + 5, -3));
     };
 
-    this.worldGenerator.generate(builder, seed);
-    this.instancedRenderer.syncCounts();
+    if (environment.multiplayer) {
+        // Wait for seed from server
+        this.multiplayer.worldSeed$.pipe(take(1)).subscribe(handleWorldInit);
+    } else {
+        // Generate random seed locally
+        const seed = Math.random() * 10000;
+        handleWorldInit(seed);
+    }
   }
 }

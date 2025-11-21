@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { SceneManagerService } from '../core/scene-manager.service';
 import { InventoryService } from '../inventory/inventory.service';
-import { MaterialService } from '../../services/material.service';
+import { MaterialService } from '../world/resources/material.service';
 
 @Injectable({
   providedIn: 'root',
