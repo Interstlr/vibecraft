@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { TreeGeneratorService, WorldBuilder } from './tree-generator.service';
 import { Random } from '../../../utils/random';
-import { Noise } from '../../../utils/noise';
+import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +9,7 @@ import { Noise } from '../../../utils/noise';
 export class WorldGeneratorService {
   private treeGenerator = inject(TreeGeneratorService);
   private readonly CHUNK_SIZE = 16;
-  private noise = new Noise();
+  private noise2D: NoiseFunction2D | null = null;
   private currentSeed: number | null = null;
   
   // Generate a 16x16 chunk at the specified chunk coordinates
@@ -60,8 +60,13 @@ export class WorldGeneratorService {
   }
 
   private getHeight(x: number, z: number, seed: number): number {
-    if (this.currentSeed !== seed) {
-        this.noise.setSeed(seed);
+    if (this.currentSeed !== seed || !this.noise2D) {
+        // Initialize noise function with a string seed derived from the number
+        // Simple hash to make it deterministic
+        this.noise2D = createNoise2D(() => {
+            const s = Math.sin(seed++) * 10000; 
+            return s - Math.floor(s);
+        });
         this.currentSeed = seed;
     }
 
@@ -72,7 +77,7 @@ export class WorldGeneratorService {
     
     // 4 Octaves for more natural terrain
     for(let i = 0; i < 4; i++) {
-        noiseValue += this.noise.noise2D(x * frequency, z * frequency) * amplitude;
+        noiseValue += this.noise2D(x * frequency, z * frequency) * amplitude;
         amplitude *= 0.5;
         frequency *= 2;
     }
@@ -84,20 +89,17 @@ export class WorldGeneratorService {
   }
 
   private trySpawnTree(x: number, surfaceY: number, z: number, world: WorldBuilder, seed: number) {
-    if (this.currentSeed !== seed) {
-        this.noise.setSeed(seed);
-        this.currentSeed = seed;
-    }
+    if (!this.noise2D) return; // Should already be initialized by getHeight
 
     // Use noise for tree distribution (clumping)
     // Low frequency noise for forest areas
-    const forestNoise = this.noise.noise2D(x * 0.01, z * 0.01);
+    const forestNoise = this.noise2D(x * 0.01, z * 0.01);
     
     // Higher frequency for individual tree placement, modulated by forest noise
     // Trees only appear where forestNoise > 0 (forest areas)
     if (forestNoise > 0.2) {
         // Simple high freq noise for density
-        const treeDensity = this.noise.noise2D(x * 0.5 + 1000, z * 0.5 + 1000);
+        const treeDensity = this.noise2D(x * 0.5 + 1000, z * 0.5 + 1000);
         
         // Threshold based on how deep in the "forest" we are
         const threshold = 0.6; // Only spawn if density is high enough
