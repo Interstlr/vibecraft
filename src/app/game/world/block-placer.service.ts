@@ -69,7 +69,7 @@ export class BlockPlacerService {
 
     // OPTIMIZATION: Occlusion Culling
     // Only render if block is exposed to air or transparent block
-    const visible = this.isBlockExposed(x, y, z);
+    const visible = this.isBlockExposed(x, y, z, type);
     let instanceId = -1;
 
     if (visible) {
@@ -134,7 +134,7 @@ export class BlockPlacerService {
             continue; 
         }
 
-        if (this.isBlockExposed(b.x, b.y, b.z)) {
+        if (this.isBlockExposed(b.x, b.y, b.z, b.type)) {
              const id = this.instancedRenderer.placeInstance(b.type, b.x, b.y, b.z);
              if (id !== null && id !== undefined) {
                  const block = this.blockData.get(this.getKey(b.x, b.y, b.z));
@@ -278,6 +278,15 @@ export class BlockPlacerService {
     return this.blockData.has(this.getKey(x, y, z));
   }
 
+  isSolidBlock(x: number, y: number, z: number): boolean {
+    const block = this.getBlock(x, y, z);
+    if (!block) return false;
+    
+    const config = BLOCKS[block.type];
+    // Default to solid if property is undefined, except for specific non-solid logic
+    return config?.solid !== false;
+  }
+
   getBlock(x: number, y: number, z: number): BlockInstance | undefined {
     return this.blockData.get(this.getKey(x, y, z));
   }
@@ -301,7 +310,13 @@ export class BlockPlacerService {
     return BLOCKS[type]?.transparent || false;
   }
 
-  private isBlockExposed(x: number, y: number, z: number): boolean {
+  private getCullSame(type: string): boolean {
+    return BLOCKS[type]?.cullSame || false;
+  }
+
+  private isBlockExposed(x: number, y: number, z: number, checkType?: string): boolean {
+    const type = checkType || this.getBlockType(x, y, z);
+    
     const dirs = [
       [1,0,0], [-1,0,0],
       [0,1,0], [0,-1,0],
@@ -312,6 +327,10 @@ export class BlockPlacerService {
       const neighbor = this.getBlock(x + dx, y + dy, z + dz);
       // Exposed if neighbor is missing OR transparent (like glass/leaves)
       if (!neighbor || this.isTransparent(neighbor.type)) {
+        // Optimization: Cull against same type if enabled
+        if (type && neighbor && neighbor.type === type && this.getCullSame(type)) {
+             continue;
+        }
         return true;
       }
     }
@@ -334,7 +353,7 @@ export class BlockPlacerService {
     const block = this.getBlock(x, y, z);
     if (!block) return;
 
-    const shouldBeVisible = this.isBlockExposed(x, y, z);
+    const shouldBeVisible = this.isBlockExposed(x, y, z, block.type);
     const isVisible = block.instanceId !== -1;
 
     if (shouldBeVisible && !isVisible) {

@@ -12,6 +12,7 @@ export class GameStateService {
   // --- Stats ---
   fps = signal(0);
   blockCount = signal(0);
+  playerPosition = signal({ x: 0, y: 0, z: 0 });
 
   // --- Inventory ---
   // Resources

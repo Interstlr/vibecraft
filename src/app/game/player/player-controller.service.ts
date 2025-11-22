@@ -134,7 +134,7 @@ export class PlayerControllerService {
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
         for (let y = minY; y <= maxY; y++) {
-          if (this.blockPlacer.hasBlock(x, y, z)) {
+          if (this.blockPlacer.isSolidBlock(x, y, z)) {
             if (
               Math.abs(position.x - x) < 0.5 + r &&
               Math.abs(position.z - z) < 0.5 + r &&
@@ -162,7 +162,7 @@ export class PlayerControllerService {
     for (let x = minX; x <= maxX; x++) {
       for (let z = minZ; z <= maxZ; z++) {
         for (let y = minY; y <= maxY; y++) {
-          if (this.blockPlacer.hasBlock(x, y, z)) {
+          if (this.blockPlacer.isSolidBlock(x, y, z)) {
             if (
               Math.abs(position.x - x) < 0.5 + r &&
               Math.abs(position.z - z) < 0.5 + r &&
