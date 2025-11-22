@@ -113,13 +113,17 @@ export class MaterialService {
           texture = this.createProceduralTexture('#FF00FF', '#000000');
       }
 
+      const effectiveOpacity = opacity ?? 1;
+      const isCutout = transparent && effectiveOpacity >= 1;
+      const isTrueTransparent = transparent && effectiveOpacity < 1;
+
       return new THREE.MeshLambertMaterial({ 
           map: texture, 
-          transparent: transparent,
-          opacity: opacity ?? 1,
-          alphaTest: (transparent && (opacity === undefined || opacity >= 1)) ? 0.5 : 0,
-          depthWrite: !transparent || (opacity !== undefined && opacity >= 1), // Disable depth write for transparent materials
-          side: transparent ? THREE.DoubleSide : THREE.FrontSide // Render both sides for water/transparent to see from inside
+          transparent: isTrueTransparent,
+          opacity: effectiveOpacity,
+          alphaTest: isCutout ? 0.5 : 0,
+          depthWrite: !isTrueTransparent,
+          side: transparent ? THREE.DoubleSide : THREE.FrontSide
       });
   }
 
