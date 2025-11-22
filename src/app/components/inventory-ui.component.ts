@@ -2,7 +2,7 @@ import { Component, HostListener, signal, computed, inject } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { InventoryService } from '../game/inventory/inventory.service';
 import { InventorySlot } from '../game/inventory/inventory-slot';
-import { BLOCKS } from '../config/blocks.config';
+import { BLOCKS } from '../game/config/blocks.config';
 import { BlockIconService } from '../game/rendering/block-icon.service';
 import { PlayerInteractionService } from '../game/player/player-interaction.service';
 

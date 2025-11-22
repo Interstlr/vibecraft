@@ -1,7 +1,7 @@
 
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
-import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../../../config/blocks.config';
+import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../../config/blocks.config';
 
 @Injectable({
   providedIn: 'root'
@@ -82,7 +82,7 @@ export class MaterialService {
         // Create materials for all 6 faces
         const materials = faces.map(face => {
              const faceConfig = getFaceConfig(face);
-             return this.createMaterial(faceConfig, def.transparent);
+             return this.createMaterial(faceConfig, def.transparent, def.opacity);
         });
 
         // If no specific faces were defined, we can treat this as a single-material block
@@ -95,7 +95,7 @@ export class MaterialService {
     });
   }
 
-  private createMaterial(config: BlockFaceDefinition, transparent: boolean = false): THREE.Material {
+  private createMaterial(config: BlockFaceDefinition, transparent: boolean = false, opacity?: number): THREE.Material {
       let texture: THREE.Texture;
 
       if (config.texture) {
@@ -116,7 +116,10 @@ export class MaterialService {
       return new THREE.MeshLambertMaterial({ 
           map: texture, 
           transparent: transparent,
-          alphaTest: transparent ? 0.5 : 0 
+          opacity: opacity ?? 1,
+          alphaTest: (transparent && (opacity === undefined || opacity >= 1)) ? 0.5 : 0,
+          depthWrite: !transparent || (opacity !== undefined && opacity >= 1), // Disable depth write for transparent materials
+          side: transparent ? THREE.DoubleSide : THREE.FrontSide // Render both sides for water/transparent to see from inside
       });
   }
 

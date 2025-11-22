@@ -35,29 +35,43 @@ export class WorldGeneratorService {
 
   private generateColumn(x: number, z: number, world: WorldBuilder, seed: number) {
     const height = this.getHeight(x, z, seed);
+    const seaLevel = 22;
     
+    const isUnderwater = height < seaLevel;
+    const isBeach = height >= seaLevel && height <= seaLevel + 2;
+
     // Bedrock layer
-    world.addBlock(x, 0, z, 'stone'); // Actually should be bedrock if defined, but stone for now based on previous code
+    world.addBlock(x, 0, z, 'stone'); 
 
     // Stone layer up to just below dirt
     // Ensure we don't go below 1
     const stoneHeight = Math.max(1, height - 3);
     
     for (let y = 1; y < stoneHeight; y++) {
-      // Deeper stone could be different, but keep it simple
       world.addBlock(x, y, z, 'stone');
     }
 
-    // Dirt layer
+    // Dirt/Sand layer
+    const fillerBlock = (isUnderwater || isBeach) ? 'sand' : 'dirt';
     for (let y = stoneHeight; y < height; y++) {
-      world.addBlock(x, y, z, 'dirt');
+      world.addBlock(x, y, z, fillerBlock);
     }
 
-    // Surface block (grass)
-    world.addBlock(x, height, z, 'grass');
+    // Surface block
+    const surfaceBlock = (isUnderwater || isBeach) ? 'sand' : 'grass';
+    world.addBlock(x, height, z, surfaceBlock);
 
-    // Attempt to generate trees
-    this.trySpawnTree(x, height, z, world, seed);
+    // Water
+    if (isUnderwater) {
+      for (let y = height + 1; y <= seaLevel; y++) {
+        world.addBlock(x, y, z, 'water');
+      }
+    }
+
+    // Attempt to generate trees (only on grass)
+    if (surfaceBlock === 'grass') {
+      this.trySpawnTree(x, height, z, world, seed);
+    }
   }
 
   private getHeight(x: number, z: number, seed: number): number {

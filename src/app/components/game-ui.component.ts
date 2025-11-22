@@ -4,7 +4,6 @@ import { GameStateService } from '../services/game-state.service';
 import { InventoryService } from '../game/inventory/inventory.service';
 import { InventoryUiComponent } from './inventory-ui.component';
 import { PauseMenuComponent } from './pause-menu.component';
-import { BLOCKS } from '../config/blocks.config';
 import { GAME_CONFIG } from '../config/game.config';
 import { BlockIconService } from '../game/rendering/block-icon.service';
 
@@ -21,8 +20,9 @@ import { BlockIconService } from '../game/rendering/block-icon.service';
     </div>
 
     <!-- Top Left Stats -->
-    <div class="absolute top-5 left-5 text-white bg-black/50 p-4 rounded-lg pointer-events-none select-none">
+    <div class="absolute top-5 left-5 text-white bg-black/50 p-4 pointer-events-none select-none">
       <p>FPS: {{ store.fps() }}</p>
+      <p>XYZ: {{ store.playerPosition().x }} / {{ store.playerPosition().y }} / {{ store.playerPosition().z }}</p>
       <p>Blocks: {{ store.blockCount() }}</p>
     </div>
 

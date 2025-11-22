@@ -12,6 +12,10 @@ const isTransparent = (type: string) => {
   return (BLOCKS as any)[type]?.transparent || false;
 };
 
+const getCullSame = (type: string) => {
+  return (BLOCKS as any)[type]?.cullSame || false;
+};
+
 addEventListener('message', ({ data }) => {
   const { chunkX, chunkZ, seed } = data;
   
@@ -91,6 +95,13 @@ addEventListener('message', ({ data }) => {
                   break;
               } else if (isTransparent(neighborType)) {
                   // Neighbor is transparent (water, glass, leaves)
+                  
+                  // Optimization: If neighbor is same type and cullSame is true, 
+                  // then we are NOT exposed on this side (merged volume)
+                  if (neighborType === type && getCullSame(type)) {
+                      continue;
+                  }
+
                   isExposed = true;
                   break;
               }

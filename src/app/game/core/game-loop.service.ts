@@ -83,6 +83,12 @@ export class GameLoopService {
 
     if (Math.random() > 0.95 && delta > 0) {
       this.store.fps.set(Math.round(1 / delta));
+      const pos = this.playerController.position;
+      this.store.playerPosition.set({
+        x: Math.floor(pos.x),
+        y: Math.floor(pos.y),
+        z: Math.floor(pos.z)
+      });
     }
 
     // Update item drops logic and rendering
