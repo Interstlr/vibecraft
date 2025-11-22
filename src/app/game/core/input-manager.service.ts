@@ -115,6 +115,7 @@ export class InputManagerService {
 
     if (event.code === 'KeyE') {
       if (this.controls.isLocked) {
+        this.inventoryService.setCraftingGridSize(2);
         this.store.openInventoryMenu();
         this.controls.unlock();
       } else if (this.store.activeMenu() === 'inventory') {
