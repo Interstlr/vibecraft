@@ -21,16 +21,16 @@ export class ItemDrop {
       this.velocity = velocity;
     } else {
       this.velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * 2.0,
-        2.0 + Math.random() * 2.0,
-        (Math.random() - 0.5) * 2.0
+        (Math.random() - 0.5) * 1.5,
+        1.5 + Math.random() * 1.5, // Reduced upward pop (was 2.0 + 2.0)
+        (Math.random() - 0.5) * 1.5
       );
     }
     
     this.rotation = new THREE.Euler(
+      0,
       Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2,
-      Math.random() * Math.PI * 2
+      0
     );
     this.age = 0;
     this.onGround = false;

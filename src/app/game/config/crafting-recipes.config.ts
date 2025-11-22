@@ -81,32 +81,32 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     id: 'stone_pickaxe',
     type: 'shaped',
     maxGridSize: 3,
-    pattern: ['SSS', ' S ', ' S '],
-    key: { S: 'stone' },
+    pattern: ['CCC', ' S ', ' S '],
+    key: { C: 'cobble', S: 'stick' },
     result: { item: 'stone_pickaxe', count: 1 }
   },
   {
     id: 'stone_axe',
     type: 'shaped',
     maxGridSize: 3,
-    pattern: ['SS', 'SS', ' S'],
-    key: { S: 'stone' },
+    pattern: ['CC', 'CS', ' S'],
+    key: { C: 'cobble', S: 'stick' },
     result: { item: 'stone_axe', count: 1 }
   },
   {
     id: 'stone_shovel',
     type: 'shaped',
     maxGridSize: 3,
-    pattern: [' S ', ' S ', ' S '],
-    key: { S: 'stone' },
+    pattern: [' C ', ' S ', ' S '],
+    key: { C: 'cobble', S: 'stick' },
     result: { item: 'stone_shovel', count: 1 }
   },
   {
     id: 'stone_sword',
     type: 'shaped',
     maxGridSize: 3,
-    pattern: [' S ', ' S ', ' H '],
-    key: { S: 'stone', H: 'stick' },
+    pattern: [' C ', ' C ', ' S '],
+    key: { C: 'cobble', S: 'stick' },
     result: { item: 'stone_sword', count: 1 }
   }
 ];

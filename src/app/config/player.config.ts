@@ -3,6 +3,7 @@ export const PLAYER_CONFIG = {
   // Movement Physics
   moveSpeed: 55.0,      // Acceleration force
   sprintSpeedMultiplier: 1.7, // Speed multiplier when sprinting
+  crouchSpeedMultiplier: 0.3, // Speed multiplier when crouching
   jumpForce: 14.0,       // Initial upward velocity (increased to match gravity)
   gravity: 65.0,         // Downward acceleration (Doubled to remove moon-gravity feel)
   drag: 10.0,            // Air/Ground resistance (deceleration)

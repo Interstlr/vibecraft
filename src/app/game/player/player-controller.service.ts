@@ -16,6 +16,7 @@ export class PlayerControllerService {
   private direction = new THREE.Vector3();
   private spawnPosition = new THREE.Vector3(0, 10, 0); // Default spawn
   private canJump = false;
+  private safeY = 0;
   private readonly MIN_WORLD_Y = -20;
   private lastSentTime = 0;
 
@@ -36,6 +37,13 @@ export class PlayerControllerService {
     this.spawnPosition.copy(position);
   }
 
+  setPosition(position: THREE.Vector3) {
+    this.sceneManager.getCamera().position.copy(position);
+    this.velocity.set(0, 0, 0);
+    // Approximate safeY to be just below feet
+    this.safeY = Math.floor(position.y - PLAYER_CONFIG.eyeHeight - 0.1);
+  }
+
   update(delta: number) {
     const camera = this.sceneManager.getCamera();
     const movement = this.input.getMovementState();
@@ -50,7 +58,9 @@ export class PlayerControllerService {
 
     const speed = this.input.isSprintHeld() 
       ? PLAYER_CONFIG.moveSpeed * PLAYER_CONFIG.sprintSpeedMultiplier 
-      : PLAYER_CONFIG.moveSpeed;
+      : (this.input.isCrouchHeld()
+          ? PLAYER_CONFIG.moveSpeed * PLAYER_CONFIG.crouchSpeedMultiplier
+          : PLAYER_CONFIG.moveSpeed);
 
     if (movement.forward || movement.backward) {
       this.velocity.z -= this.direction.z * speed * delta;
@@ -77,12 +87,22 @@ export class PlayerControllerService {
     if (this.hasCollision(camera.position)) {
       camera.position.x -= dx;
       this.velocity.x = 0;
+    } else if (this.input.isCrouchHeld()) {
+      if (this.wouldFall(camera.position, !this.canJump)) {
+        camera.position.x -= dx;
+        this.velocity.x = 0;
+      }
     }
 
     camera.position.z += dz;
     if (this.hasCollision(camera.position)) {
       camera.position.z -= dz;
       this.velocity.z = 0;
+    } else if (this.input.isCrouchHeld()) {
+      if (this.wouldFall(camera.position, !this.canJump)) {
+        camera.position.z -= dz;
+        this.velocity.z = 0;
+      }
     }
 
     camera.position.y += this.velocity.y * delta;
@@ -91,6 +111,7 @@ export class PlayerControllerService {
       if (this.velocity.y < 0) {
         this.velocity.y = 0;
         this.canJump = true;
+        this.safeY = verticalHit;
         camera.position.y = verticalHit + 0.5 + PLAYER_CONFIG.eyeHeight;
       } else {
         this.velocity.y = 0;
@@ -182,10 +203,47 @@ export class PlayerControllerService {
     return null;
   }
 
+  private wouldFall(position: THREE.Vector3, checkDeep: boolean = false): boolean {
+    const r = PLAYER_CONFIG.collisionRadius;
+    const feetY = position.y - PLAYER_CONFIG.eyeHeight;
+    const currentY = Math.floor(feetY - 0.1);
+    
+    const minX = Math.floor(position.x - r - 0.5);
+    const maxX = Math.ceil(position.x + r + 0.5);
+    const minZ = Math.floor(position.z - r - 0.5);
+    const maxZ = Math.ceil(position.z + r + 0.5);
+
+    // If airborne (checkDeep), we want to ensure we are still over the block we launched from (safeY).
+    // We scan from current height down to safeY to find ANY supporting block.
+    const bottomY = checkDeep ? this.safeY : currentY;
+    const startY = Math.max(currentY, bottomY);
+    const endY = Math.min(currentY, bottomY);
+
+    // Limit scan range to avoid performance issues if falling from great height
+    const effectiveEndY = Math.max(endY, startY - 5);
+
+    for (let y = startY; y >= effectiveEndY; y--) {
+      for (let x = minX; x <= maxX; x++) {
+        for (let z = minZ; z <= maxZ; z++) {
+          if (this.blockPlacer.isSolidBlock(x, y, z)) {
+            if (
+              Math.abs(position.x - x) < 0.5 + r &&
+              Math.abs(position.z - z) < 0.5 + r
+            ) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   private resetPosition() {
     const camera = this.sceneManager.getCamera();
     camera.position.copy(this.spawnPosition);
     this.velocity.set(0, 0, 0);
     this.canJump = true;
+    this.safeY = Math.floor(this.spawnPosition.y - PLAYER_CONFIG.eyeHeight - 0.1);
   }
 }

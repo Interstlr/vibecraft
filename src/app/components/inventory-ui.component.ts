@@ -41,6 +41,8 @@ export class InventoryUiComponent {
   tooltipX = signal(0);
   tooltipY = signal(0);
 
+  hoveredSlotIndex = signal<number>(-1);
+
   craftingIndices = computed(() => {
     if (this.inventoryService.craftingGridSize() === 2) {
       return [37, 38, 39, 40];
@@ -89,41 +91,44 @@ export class InventoryUiComponent {
   }
 
   private dropOneItemHoveredOrHeld() {
-    // 1. If holding an item, drop one from held stack
-    const held = this.inventoryService.heldItem();
-    if (held.item) {
-      const dropped = this.inventoryService.dropOneHeld();
-      if (dropped) {
-        this.spawnDrop(dropped);
-      }
-      return;
-    }
-
-    // 2. If hovering over a slot, drop one from that slot
-    // We need to know which slot is hovered. 
-    // We can track hovered slot index in a signal.
+    // 1. If hovering over a slot, drop one from that slot (Priority over held)
     const hoveredIndex = this.hoveredSlotIndex();
     if (hoveredIndex !== -1) {
       const slot = this.inventoryService.getSlot(hoveredIndex);
       if (slot.item && slot.count > 0) {
-        // Logic to remove one from specific slot and return it
-        // InventoryService needs a method for this or we do it manually
-        const item = slot.item;
-        this.inventoryService.setSlot(hoveredIndex, slot.item, slot.count - 1);
-        if (slot.count - 1 === 0) {
-             this.inventoryService.setSlot(hoveredIndex, null, 0);
-        }
-        this.spawnDrop({ item, count: 1 });
+        const itemToDrop = slot.item;
+        
+        // Remove one from slot
+        this.inventoryService.updateSlot(hoveredIndex, { 
+            item: slot.count > 1 ? slot.item : null, 
+            count: slot.count - 1 
+        });
+        
+        this.spawnDrop(itemToDrop, 1);
+        return;
       }
+    }
+
+    // 2. If not hovering (or slot empty), drop one from held stack
+    const held = this.inventoryService.heldItem();
+    if (held.item) {
+        const itemToDrop = held.item;
+        
+        // Remove one from held
+        if (held.count > 1) {
+            this.inventoryService.heldItem.set({ item: held.item, count: held.count - 1 });
+        } else {
+            this.inventoryService.heldItem.set({ item: null, count: 0 });
+        }
+        
+        this.spawnDrop(itemToDrop, 1);
     }
   }
 
-  private spawnDrop(dropped: InventorySlot) {
-     if (!dropped.item) return;
-     this.playerInteraction.dropItem(dropped.item, dropped.count);
+  private spawnDrop(item: string, count: number) {
+     if (!item || count <= 0) return;
+     this.playerInteraction.dropItem(item, count);
   }
-
-  hoveredSlotIndex = signal<number>(-1);
 
   onSlotMouseEnter(slotIndex: number, event: MouseEvent) {
     this.hoveredSlotIndex.set(slotIndex);
@@ -176,7 +181,7 @@ export class InventoryUiComponent {
     }
     
     if (dropped && dropped.item) {
-       this.spawnDrop(dropped);
+       this.spawnDrop(dropped.item, dropped.count);
     }
   }
 }

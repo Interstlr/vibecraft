@@ -1,7 +1,8 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameStateService } from '../services/game-state.service';
+import { WorldStorageService } from '../game/world/world-storage.service';
 
 @Component({
   selector: 'app-main-menu',
@@ -32,16 +33,31 @@ import { GameStateService } from '../services/game-state.service';
             </div>
         </h1>
 
+        <!-- Resume Button -->
+        @if (hasSavedGame()) {
+          <button (click)="resumeGame()" 
+                  class="group relative w-[400px] h-[60px] bg-[#7d7d7d] active:bg-[#595959] border-[3px] border-black text-white text-2xl shadow-xl transition-transform hover:scale-[1.02] cursor-pointer">
+            <!-- Pseudo-3D Borders -->
+            <div class="absolute inset-0 border-t-[3px] border-l-[3px] border-[#c6c6c6] pointer-events-none"></div>
+            <div class="absolute inset-0 border-b-[3px] border-r-[3px] border-[#3b3b3b] pointer-events-none"></div>
+            
+            <!-- Text -->
+            <span class="relative z-10 drop-shadow-[2px_2px_0_#000] group-hover:text-[#ffffa0]">
+              Resume Game
+            </span>
+          </button>
+        }
+
         <!-- Play Button (Minecraft Style) -->
         <button (click)="startGame()" 
-                class="group relative w-[400px] h-[60px] bg-[#7d7d7d] active:bg-[#595959] border-[3px] border-black text-white text-2xl shadow-xl transition-transform hover:scale-[1.02] mt-8 cursor-pointer">
+                class="group relative w-[400px] h-[60px] bg-[#7d7d7d] active:bg-[#595959] border-[3px] border-black text-white text-2xl shadow-xl transition-transform hover:scale-[1.02] mt-0 cursor-pointer">
           <!-- Pseudo-3D Borders -->
           <div class="absolute inset-0 border-t-[3px] border-l-[3px] border-[#c6c6c6] pointer-events-none"></div>
           <div class="absolute inset-0 border-b-[3px] border-r-[3px] border-[#3b3b3b] pointer-events-none"></div>
           
           <!-- Text -->
           <span class="relative z-10 drop-shadow-[2px_2px_0_#000] group-hover:text-[#ffffa0]">
-            Play Game
+            {{ hasSavedGame() ? 'New Game' : 'Play Game' }}
           </span>
         </button>
 
@@ -65,10 +81,27 @@ import { GameStateService } from '../services/game-state.service';
     }
   `]
 })
-export class MainMenuComponent {
+export class MainMenuComponent implements OnInit {
   store = inject(GameStateService);
+  worldStorage = inject(WorldStorageService);
+  
+  hasSavedGame = signal(false);
+
+  async ngOnInit() {
+    try {
+      const hasSave = await this.worldStorage.hasSavedWorld();
+      console.log('Checking for saved world:', hasSave);
+      this.hasSavedGame.set(hasSave);
+    } catch (e) {
+      console.error('Error checking for saved world:', e);
+    }
+  }
 
   startGame() {
-    this.store.startGame();
+    this.store.startGame(false);
+  }
+
+  resumeGame() {
+    this.store.startGame(true);
   }
 }

@@ -27,6 +27,7 @@ export class InputManagerService {
   private movement: MovementState = { forward: false, backward: false, left: false, right: false };
   private jumpActive = false;
   private sprintActive = false;
+  private crouchActive = false;
   private explicitPause = false;
 
   private keyDownHandler = (event: KeyboardEvent) => this.handleKeyDown(event);
@@ -103,6 +104,10 @@ export class InputManagerService {
     return this.sprintActive;
   }
 
+  isCrouchHeld(): boolean {
+    return this.crouchActive;
+  }
+
   private handleKeyDown(event: KeyboardEvent) {
     if (event.code === 'Escape') {
       if (this.store.activeMenu() !== 'none') {
@@ -113,6 +118,7 @@ export class InputManagerService {
         event.preventDefault();
       } else {
         this.explicitPause = true;
+        this.store.openPauseMenu();
         this.controls.unlock();
       }
       return;
@@ -157,6 +163,10 @@ export class InputManagerService {
         case 'ControlRight':
           this.sprintActive = true;
           break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          this.crouchActive = true;
+          break;
         case 'KeyQ':
           // Drop selected item
           this.callbacks?.onDropItem();
@@ -198,6 +208,10 @@ export class InputManagerService {
       case 'ControlLeft':
       case 'ControlRight':
         this.sprintActive = false;
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.crouchActive = false;
         break;
     }
   }

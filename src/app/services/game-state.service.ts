@@ -6,6 +6,7 @@ import { Injectable, signal, computed } from '@angular/core';
 export class GameStateService {
   // --- Game Flow ---
   isGameStarted = signal(false);
+  isResuming = signal(false);
   isLoading = signal(false);
   loadingProgress = signal(0);
 
@@ -50,7 +51,8 @@ export class GameStateService {
   constructor() {}
 
   // Actions
-  startGame() {
+  startGame(resume: boolean = false) {
+    this.isResuming.set(resume);
     this.isGameStarted.set(true);
     this.isLoading.set(true);
     this.loadingProgress.set(0);

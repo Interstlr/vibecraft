@@ -22,12 +22,14 @@ import { GameStateService } from '../services/game-state.service';
       <div class="z-10 flex flex-col items-center w-[600px] max-w-[90vw] gap-4">
         
         <!-- Title -->
-        <h2 class="text-2xl mb-8 drop-shadow-[2px_2px_0_#000]">Generating World...</h2>
+        <h2 class="text-2xl mb-8 drop-shadow-[2px_2px_0_#000]">
+          {{ isResuming() ? 'Loading World...' : 'Generating World...' }}
+        </h2>
 
         <!-- Progress Bar Container -->
-        <div class="w-full h-[40px] border-[2px] border-[#8f8f8f] bg-black relative">
+        <div class="w-full h-[4px] bg-[#444444] relative">
             <!-- Green Progress -->
-            <div class="h-full bg-[#00ff00] transition-all duration-200 ease-out"
+            <div class="h-full bg-[#25e25a] transition-all duration-200 ease-out shadow-[0_0_4px_#25e25a]"
                  [style.width.%]="progress()">
             </div>
         </div>
@@ -45,5 +47,6 @@ export class LoadingScreenComponent {
   private gameState = inject(GameStateService);
   
   progress = computed(() => Math.floor(this.gameState.loadingProgress()));
+  isResuming = computed(() => this.gameState.isResuming());
 }
 

@@ -22,6 +22,10 @@ import { RemotePlayerRendererService } from '../game/rendering/remote-player-ren
 import { environment } from '../../environments/environment';
 import { take } from 'rxjs/operators';
 import { GameStateService } from '../services/game-state.service';
+import { WorldStorageService } from '../game/world/world-storage.service';
+import { ItemDropSystemService } from '../game/systems/item-drop-system.service';
+import { InventoryInitService } from '../game/inventory/inventory-init.service';
+import { InventoryService } from '../game/inventory/inventory.service';
 
 @Component({
   selector: 'app-game-scene',
@@ -50,6 +54,10 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private multiplayer = inject(MultiplayerService);
   private remotePlayerRenderer = inject(RemotePlayerRendererService);
   private gameState = inject(GameStateService);
+  private worldStorage = inject(WorldStorageService);
+  private itemDropSystem = inject(ItemDropSystemService);
+  private inventoryInit = inject(InventoryInitService);
+  private inventoryService = inject(InventoryService);
 
   ngAfterViewInit() {
     const container = this.rendererContainer.nativeElement;
@@ -97,8 +105,14 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         this.chunkManager.reset();
         
         // Load chunks with progress bar
-        await this.chunkManager.generateInitialChunks(new THREE.Vector3(0, 0, 0), (progress) => {
-             this.gameState.setLoadingProgress(progress);
+        await this.chunkManager.generateInitialChunks(
+            this.gameState.isResuming() ? new THREE.Vector3(
+                 this.gameState.playerPosition().x, 
+                 this.gameState.playerPosition().y, 
+                 this.gameState.playerPosition().z
+            ) : new THREE.Vector3(0, 0, 0), 
+            (progress) => {
+                 this.gameState.setLoadingProgress(progress);
         });
 
         // Wait for the center chunk to be actually loaded and processed from worker
@@ -110,17 +124,57 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         this.instancedRenderer.syncCounts();
         
         // Spawn logic
-        // Find the highest block at 0,0 to spawn on top of it
-        // This is safer than calculating noise again because it uses actual loaded blocks
-        let surfaceY = 150;
-        while (surfaceY > 0 && !this.chunkManager.hasBlock(0, surfaceY, 0)) {
-             surfaceY--;
-        }
+        let spawnY = 0;
         
-        const spawnY = surfaceY + 2;
+        if (this.gameState.isResuming()) {
+          const meta = await this.worldStorage.loadMetadata();
+          if (meta) {
+            // Restore player state
+            const pos = meta.playerPos;
+            this.playerController.setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+            
+            // Restore inventory
+            this.gameState.grassCount.set(meta.inventory.grass);
+            this.gameState.dirtCount.set(meta.inventory.dirt);
+            this.gameState.stoneCount.set(meta.inventory.stone);
+            this.gameState.woodCount.set(meta.inventory.wood);
+            this.gameState.leavesCount.set(meta.inventory.leaves);
+            this.gameState.hasWorkbench.set(meta.inventory.workbench);
+            this.gameState.hasAxe.set(meta.inventory.axe);
+            
+            // Restore actual inventory slots
+            if (meta.inventory.slots) {
+                this.inventoryService.setSlots(meta.inventory.slots);
+            }
 
-        this.sceneManager.getCamera().position.set(0, spawnY, 0);
-        this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
+            // Restore dropped items
+            if (meta.droppedItems) {
+              meta.droppedItems.forEach(drop => {
+                this.itemDropSystem.spawnDrop(
+                  drop.type, 
+                  new THREE.Vector3(drop.position.x, drop.position.y, drop.position.z),
+                  drop.count,
+                  new THREE.Vector3(drop.velocity.x, drop.velocity.y, drop.velocity.z)
+                );
+              });
+            }
+
+            spawnY = pos.y;
+          }
+        } else {
+          // Find the highest block at 0,0 to spawn on top of it
+          let surfaceY = 150;
+          while (surfaceY > 0 && !this.chunkManager.hasBlock(0, surfaceY, 0)) {
+               surfaceY--;
+          }
+          spawnY = surfaceY + 2;
+          
+          this.sceneManager.getCamera().position.set(0, spawnY, 0);
+          this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
+          
+          // Initialize clean inventory for new game
+          this.inventoryInit.initializeNewGameInventory();
+        }
         
         if (environment.multiplayer) {
              this.playerController.forceSendUpdate();
@@ -128,6 +182,9 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
 
         // Start game loop only after world is ready
         this.gameLoop.start();
+        
+        // Only spawn chicken if not resuming, or maybe spawn it anyway? 
+        // For now let's just spawn it, we don't save entities yet.
         this.chickenSystem.spawnChicken(new THREE.Vector3(1, spawnY + 5, -3));
 
         // Hide loading screen only after everything is ready
@@ -137,7 +194,20 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         }, 100);
     };
 
-    if (environment.multiplayer) {
+    if (this.gameState.isResuming()) {
+      // Resume from saved game
+      this.worldStorage.loadMetadata().then(meta => {
+        if (meta) {
+          // Restore GameState player position early for chunk generation
+          this.gameState.playerPosition.set(meta.playerPos);
+          handleWorldInit(meta.seed);
+        } else {
+          // Fallback if meta not found
+          console.error('Could not load saved game metadata');
+          handleWorldInit(Math.random() * 10000);
+        }
+      });
+    } else if (environment.multiplayer) {
         // Wait for seed from server
         this.multiplayer.worldSeed$.pipe(take(1)).subscribe(handleWorldInit);
     } else {
