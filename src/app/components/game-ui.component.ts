@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { GameStateService } from '../services/game-state.service';
 import { InventoryService } from '../game/inventory/inventory.service';
 import { InventoryUiComponent } from './inventory-ui.component';
+import { PauseMenuComponent } from './pause-menu.component';
 import { BLOCKS } from '../config/blocks.config';
 import { GAME_CONFIG } from '../config/game.config';
 import { BlockIconService } from '../game/rendering/block-icon.service';
@@ -10,7 +11,7 @@ import { BlockIconService } from '../game/rendering/block-icon.service';
 @Component({
   selector: 'app-game-ui',
   standalone: true,
-  imports: [CommonModule, InventoryUiComponent],
+  imports: [CommonModule, InventoryUiComponent, PauseMenuComponent],
   template: `
     <!-- Crosshair -->
     <div class="absolute top-1/2 left-1/2 w-5 h-5 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 opacity-80">
@@ -59,18 +60,9 @@ import { BlockIconService } from '../game/rendering/block-icon.service';
       <app-inventory-ui></app-inventory-ui>
     }
 
-    <!-- Instructions Overlay -->
-    @if (store.showInstructions()) {
-      <div class="fixed top-0 left-0 w-full h-full flex flex-col justify-center items-center text-white z-20 cursor-pointer"
-           (click)="requestLock.emit()">
-        <h1 class="text-4xl font-bold mb-4 animate-pulse">CLICK TO PLAY</h1>
-        <div class="text-center space-y-2 text-lg font-mono bg-black/50 p-6 rounded-xl border border-white/20">
-          <p>WASD - Move | SPACE - Jump</p>
-          <p>LMB (Hold) - Mine | RMB - Build/Interact</p>
-          <p>E - Inventory</p>
-          <p>1-9 - Select Slot</p>
-        </div>
-      </div>
+    <!-- Pause Menu -->
+    @if (store.activeMenu() === 'pause') {
+      <app-pause-menu (resume)="handleClose()"></app-pause-menu>
     }
   `,
   styles: [`

@@ -45,7 +45,6 @@ export class InputManagerService {
     this.controls = new PointerLockControls(this.sceneManager.getCamera(), document.body);
 
     this.controls.addEventListener('lock', () => {
-      this.store.showInstructions.set(false);
       if (this.store.isMenuOpen()) {
         this.store.closeMenus();
       }
@@ -56,9 +55,6 @@ export class InputManagerService {
         this.callbacks.onPrimaryUp();
       }
       this.jumpActive = false;
-      if (!this.store.isMenuOpen()) {
-        this.store.showInstructions.set(true);
-      }
     });
 
     window.addEventListener('keydown', this.keyDownHandler);
@@ -107,8 +103,13 @@ export class InputManagerService {
         if (!this.controls.isLocked) {
           this.controls.lock();
         }
-        event.preventDefault();
+      } else {
+        this.store.openPauseMenu();
+        if (this.controls.isLocked) {
+          this.controls.unlock();
+        }
       }
+      event.preventDefault();
       return;
     }
 
