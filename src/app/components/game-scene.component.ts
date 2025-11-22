@@ -101,10 +101,24 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
              this.gameState.setLoadingProgress(progress);
         });
 
+        // Wait for the center chunk to be actually loaded and processed from worker
+        // We check for bedrock at 0,0,0 which is always generated
+        while (!this.chunkManager.hasBlock(0, 0, 0)) {
+             await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
         this.instancedRenderer.syncCounts();
         
         // Spawn logic
-        const spawnY = this.worldGenerator.getSurfaceHeight(0, 0, seed) + 2;
+        // Find the highest block at 0,0 to spawn on top of it
+        // This is safer than calculating noise again because it uses actual loaded blocks
+        let surfaceY = 150;
+        while (surfaceY > 0 && !this.chunkManager.hasBlock(0, surfaceY, 0)) {
+             surfaceY--;
+        }
+        
+        const spawnY = surfaceY + 2;
+
         this.sceneManager.getCamera().position.set(0, spawnY, 0);
         this.playerController.setSpawn(new THREE.Vector3(0, spawnY, 0));
         

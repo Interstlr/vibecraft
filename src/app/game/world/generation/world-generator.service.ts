@@ -8,6 +8,7 @@ import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
 })
 export class WorldGeneratorService {
   private readonly CHUNK_SIZE = 16;
+  private readonly SEA_LEVEL = 22;
   private noise2D: NoiseFunction2D | null = null;
   private currentSeed: number | null = null;
   
@@ -20,25 +21,46 @@ export class WorldGeneratorService {
     const endX = startX + this.CHUNK_SIZE;
     const endZ = startZ + this.CHUNK_SIZE;
 
+    // 1. Terrain Pass
     // Generate base terrain for each column in the chunk
     for (let x = startX; x < endX; x++) {
       for (let z = startZ; z < endZ; z++) {
         this.generateColumn(x, z, world, seed);
       }
     }
+
+    // 2. Feature Pass (Trees)
+    // Check a padded area around the chunk to allow trees from neighbors to spill in
+    // Tree radius is ~2, so padding of 3 covers it
+    const padding = 3;
+    for (let x = startX - padding; x < endX + padding; x++) {
+      for (let z = startZ - padding; z < endZ + padding; z++) {
+        // We need the height to know where the tree base would be
+        const height = this.getHeight(x, z, seed);
+        
+        // Check if valid spot for tree (Grass)
+        // Replicate logic from generateColumn
+        const isUnderwater = height < this.SEA_LEVEL;
+        const isBeach = height >= this.SEA_LEVEL && height <= this.SEA_LEVEL + 2;
+        
+        // Only spawn on "Grass" (not underwater, not beach)
+        if (!isUnderwater && !isBeach) {
+           this.trySpawnTree(x, height, z, world, seed);
+        }
+      }
+    }
   }
 
   // Get the surface height at world coordinates (for player spawning, etc.)
   getSurfaceHeight(x: number, z: number, seed: number): number {
-    return this.getHeight(x, z, seed);
+    return Math.max(this.getHeight(x, z, seed), this.SEA_LEVEL);
   }
 
   private generateColumn(x: number, z: number, world: WorldBuilder, seed: number) {
     const height = this.getHeight(x, z, seed);
-    const seaLevel = 22;
     
-    const isUnderwater = height < seaLevel;
-    const isBeach = height >= seaLevel && height <= seaLevel + 2;
+    const isUnderwater = height < this.SEA_LEVEL;
+    const isBeach = height >= this.SEA_LEVEL && height <= this.SEA_LEVEL + 2;
 
     // Bedrock layer
     world.addBlock(x, 0, z, 'stone'); 
@@ -63,14 +85,9 @@ export class WorldGeneratorService {
 
     // Water
     if (isUnderwater) {
-      for (let y = height + 1; y <= seaLevel; y++) {
+      for (let y = height + 1; y <= this.SEA_LEVEL; y++) {
         world.addBlock(x, y, z, 'water');
       }
-    }
-
-    // Attempt to generate trees (only on grass)
-    if (surfaceBlock === 'grass') {
-      this.trySpawnTree(x, height, z, world, seed);
     }
   }
 
