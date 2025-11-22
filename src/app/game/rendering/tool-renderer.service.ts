@@ -258,31 +258,25 @@ export class ToolRendererService {
     if (isTool) {
         // Pivot is now at the handle (bottom-left of tool).
         // We position the handle in the hand (bottom-right of screen).
-        const basePos = new THREE.Vector3(0.5, -0.6, -0.7);
+        const basePos = new THREE.Vector3(0.5, -0.75, -0.7);
         // Initial rotation to point the tool forward/up/left
         const baseRot = new THREE.Euler(0, -Math.PI / 2 + 0.3, Math.PI / 10); 
 
         if (this.isSwinging) {
              const swingSpeed = 12;
-             // Sine wave for swing cycle (-1 to 1)
-             const s = Math.sin((time / 1000) * swingSpeed);
+             // Use absolute sine for a unidirectional motion (0 -> 1 -> 0)
+             const swingProgress = Math.abs(Math.sin((time / 1000) * swingSpeed));
              
-             // Map s to a swing progress (0 to 1 approx) for unidirectional look
-             // We want the "hit" to be when s is close to peak.
-             
-             // Move the whole tool towards center (X decreases) and forward (Z decreases)
-             // Base X is 0.5. We want to go towards 0.
-             this.itemGroup.position.set(
-                 basePos.x - Math.max(0, s) * 0.25, // Less movement towards center
-                 basePos.y + s * 0.05,              // Less lift
-                 basePos.z - Math.max(0, s) * 0.2   // Less punch forward
-             );
+             // Pure rotational swing around the handle pivot
+             this.itemGroup.position.copy(basePos);
 
-             // Rotate to emphasize the forward chop
+             // Swing towards center (Yaw +) and Down (Pitch +)
+             // Fixed: Use Z-axis rotation (Roll) for the main "screen-space" swing
+             // to avoid the "falling backward" 3D effect of X-axis rotation.
              this.itemGroup.rotation.set(
-                 baseRot.x + s * 0.5,  // Pitch forward
-                 baseRot.y + s * 0.8,  // Yaw inward
-                 baseRot.z + s * 0.5   // Roll
+                 baseRot.x,                        // Keep X stable (no back/forward tilt)
+                 baseRot.y + swingProgress * 0.15, // Slight Yaw inward
+                 baseRot.z + swingProgress * 0.75  // Main Arc: Tip moves Left and Down
              );
         } else {
              this.itemGroup.position.copy(basePos);
