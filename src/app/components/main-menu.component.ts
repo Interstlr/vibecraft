@@ -11,12 +11,13 @@ import { WorldStorageService } from '../game/world/world-storage.service';
   template: `
     <div class="relative w-full h-full overflow-hidden font-mono select-none flex flex-col items-center justify-center">
       
-      <!-- Background Image (Minecraft Cherry Blossom Vibe) -->
-      <div class="absolute inset-0 z-0">
-        <img src="https://images.hdqwalls.com/wallpapers/minecraft-cherry-blossom-village-4k-mo.jpg" 
-             alt="Background" 
-             class="w-full h-full object-cover scale-105">
-        <div class="absolute inset-0 bg-black/20"></div>
+      <!-- Background Image (Asset) -->
+      <div class="absolute inset-0 z-0 w-full h-full"
+           style="background-image: url('assets/minecraft/textures/gui/presets/isles.png'); 
+                  background-size: cover;
+                  background-position: center;
+                  image-rendering: pixelated;">
+        <div class="absolute inset-0 bg-black/50"></div>
       </div>
 
       <!-- Content -->
