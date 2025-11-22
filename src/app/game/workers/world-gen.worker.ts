@@ -18,6 +18,8 @@ const getCullSame = (type: string) => {
 
 addEventListener('message', ({ data }) => {
   const { chunkX, chunkZ, seed } = data;
+  const chunkOffsetX = chunkX * 16;
+  const chunkOffsetZ = chunkZ * 16;
   
   // Use a Map for sparse storage during generation, or a 3D array if dense?
   // Since we generate full columns, a 3D array is memory heavy (16x256x16 = 65k entries).
@@ -33,9 +35,15 @@ addEventListener('message', ({ data }) => {
 
   const worldBuilder = {
     addBlock: (x: number, y: number, z: number, type: string) => {
-        // x, z are world coords. Convert to chunk local for optimization checks
-        const lx = ((x % 16) + 16) % 16;
-        const lz = ((z % 16) + 16) % 16;
+        // STRICT BOUNDS CHECK: Ignore blocks outside this chunk
+        if (x < chunkOffsetX || x >= chunkOffsetX + 16 || 
+            z < chunkOffsetZ || z >= chunkOffsetZ + 16) {
+            return;
+        }
+
+        // x, z are world coords. Convert to chunk local
+        const lx = x - chunkOffsetX;
+        const lz = z - chunkOffsetZ;
         const key = `${lx},${y},${lz}`;
         
         localBlockMap.set(key, type);
@@ -44,8 +52,14 @@ addEventListener('message', ({ data }) => {
         if (y > minMaxY.max) minMaxY.max = y;
     },
     hasBlock: (x: number, y: number, z: number) => {
-        const lx = ((x % 16) + 16) % 16;
-        const lz = ((z % 16) + 16) % 16;
+        // Check bounds for read as well
+        if (x < chunkOffsetX || x >= chunkOffsetX + 16 || 
+            z < chunkOffsetZ || z >= chunkOffsetZ + 16) {
+            return false; // Treat outside as empty/air for generation purposes
+        }
+
+        const lx = x - chunkOffsetX;
+        const lz = z - chunkOffsetZ;
         const key = `${lx},${y},${lz}`;
         return localBlockMap.has(key);
     }
@@ -65,9 +79,6 @@ addEventListener('message', ({ data }) => {
     [0,1,0], [0,-1,0],
     [0,0,1], [0,0,-1]
   ];
-
-  const chunkOffsetX = chunkX * 16;
-  const chunkOffsetZ = chunkZ * 16;
 
   for (const [key, type] of localBlockMap.entries()) {
       const [lx, y, lz] = key.split(',').map(Number);

@@ -20,10 +20,33 @@ export class WorldGeneratorService {
     const endX = startX + this.CHUNK_SIZE;
     const endZ = startZ + this.CHUNK_SIZE;
 
+    // 1. Terrain Pass
     // Generate base terrain for each column in the chunk
     for (let x = startX; x < endX; x++) {
       for (let z = startZ; z < endZ; z++) {
         this.generateColumn(x, z, world, seed);
+      }
+    }
+
+    // 2. Feature Pass (Trees)
+    // Check a padded area around the chunk to allow trees from neighbors to spill in
+    // Tree radius is ~2, so padding of 3 covers it
+    const padding = 3;
+    for (let x = startX - padding; x < endX + padding; x++) {
+      for (let z = startZ - padding; z < endZ + padding; z++) {
+        // We need the height to know where the tree base would be
+        const height = this.getHeight(x, z, seed);
+        
+        // Check if valid spot for tree (Grass)
+        // Replicate logic from generateColumn
+        const seaLevel = 22;
+        const isUnderwater = height < seaLevel;
+        const isBeach = height >= seaLevel && height <= seaLevel + 2;
+        
+        // Only spawn on "Grass" (not underwater, not beach)
+        if (!isUnderwater && !isBeach) {
+           this.trySpawnTree(x, height, z, world, seed);
+        }
       }
     }
   }
@@ -66,11 +89,6 @@ export class WorldGeneratorService {
       for (let y = height + 1; y <= seaLevel; y++) {
         world.addBlock(x, y, z, 'water');
       }
-    }
-
-    // Attempt to generate trees (only on grass)
-    if (surfaceBlock === 'grass') {
-      this.trySpawnTree(x, height, z, world, seed);
     }
   }
 
