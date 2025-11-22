@@ -10,7 +10,7 @@ import { InstancedRendererService } from '../../rendering/instanced-renderer.ser
 })
 export class ChunkManagerService implements WorldBuilder {
   private readonly CHUNK_SIZE = 16;
-  private readonly RENDER_DISTANCE = 8; // Radius in chunks (8 * 16 = 128 blocks)
+  private readonly RENDER_DISTANCE = 7; // Radius in chunks (8 * 16 = 128 blocks)
   private readonly WORLD_SIZE_CHUNKS = 100; // Total width/depth in chunks
   private readonly HALF_WORLD_SIZE = Math.floor(this.WORLD_SIZE_CHUNKS / 2);
   
@@ -148,7 +148,7 @@ export class ChunkManagerService implements WorldBuilder {
     // If forceAll is true, we load ALL needed chunks at once (e.g. initial spawn)
     // Otherwise, we load only ONE per frame to smooth out performance
     let loadedCount = 0;
-    const maxLoads = forceAll ? 1000 : 2; // Load max 2 chunks per update if walking
+    const maxLoads = forceAll ? 1000 : 1; // Грузим только 1 чанк за кадр при движении
 
     for (const key of neededChunks) {
       if (!this.loadedChunks.has(key)) {

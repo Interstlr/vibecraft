@@ -127,6 +127,13 @@ export class BlockPlacerService {
 
     // 2. Render Phase: Calculate visibility for new blocks
     for (const b of addedBlocks) {
+        // ОПТИМИЗАЦИЯ: Быстрая проверка на "внутренний" блок в рамках батча
+        // Если блок окружен со всех сторон блоками из текущей генерации, он точно невидим
+        // и нам не нужно дергать тяжелый isBlockExposed
+        if (this.isSurroundedByBatch(b, batchKeys)) {
+            continue; 
+        }
+
         if (this.isBlockExposed(b.x, b.y, b.z)) {
              const id = this.instancedRenderer.placeInstance(b.type, b.x, b.y, b.z);
              if (id !== null && id !== undefined) {
@@ -138,17 +145,23 @@ export class BlockPlacerService {
 
     // 3. Update neighbors (only those NOT in the batch)
     const dirs = [[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1]];
-    // Use a Set to avoid checking the same neighbor multiple times
     const checkedNeighbors = new Set<string>();
 
     for (const b of addedBlocks) {
+        // Если блок внутри батча, его соседей снаружи обновлять вряд ли нужно так часто,
+        // но для корректности оставим, однако добавим проверку batchKeys
+        
         for (const [dx, dy, dz] of dirs) {
             const nx = b.x + dx;
             const ny = b.y + dy;
             const nz = b.z + dz;
             const nKey = this.getKey(nx, ny, nz);
             
-            if (!batchKeys.has(nKey) && !checkedNeighbors.has(nKey)) {
+            // Если сосед тоже часть этого нового чанка, не нужно обновлять его видимость сейчас,
+            // мы это уже сделали в цикле выше (Render Phase)
+            if (batchKeys.has(nKey)) continue;
+
+            if (!checkedNeighbors.has(nKey)) {
                 this.updateBlockVisibility(nx, ny, nz);
                 checkedNeighbors.add(nKey);
             }
@@ -156,6 +169,18 @@ export class BlockPlacerService {
     }
 
     this.store.blockCount.set(this.blockData.size);
+  }
+
+  // Добавьте этот helper-метод в класс
+  private isSurroundedByBatch(b: {x: number, y: number, z: number}, batchKeys: Set<string>): boolean {
+      // Проверяем 6 соседей. Если ВСЕ они есть в batchKeys, значит блок внутри массива
+      // и проверять его через Raycast/GlobalMap не нужно.
+      return batchKeys.has(this.getKey(b.x + 1, b.y, b.z)) &&
+             batchKeys.has(this.getKey(b.x - 1, b.y, b.z)) &&
+             batchKeys.has(this.getKey(b.x, b.y + 1, b.z)) &&
+             batchKeys.has(this.getKey(b.x, b.y - 1, b.z)) &&
+             batchKeys.has(this.getKey(b.x, b.y, b.z + 1)) &&
+             batchKeys.has(this.getKey(b.x, b.y, b.z - 1));
   }
 
   removeBlock(x: number, y: number, z: number, broadcast: boolean = true): BlockInstance | null {
