@@ -25,6 +25,13 @@ export class ChunkManagerService implements WorldBuilder {
   private lastChunkZ = -999999;
 
   private loadQueue: {key: string, dist: number}[] = [];
+  
+  // Initial Load Tracking
+  private isInitialLoading = false;
+  private initialLoadTotal = 0;
+  private initialLoadCount = 0;
+  private initialLoadProgressCallback?: (percent: number) => void;
+  private initialLoadResolver?: () => void;
 
   constructor(
     private worldGenerator: WorldGeneratorService,
@@ -56,7 +63,7 @@ export class ChunkManagerService implements WorldBuilder {
     }
   }
 
-  async generateInitialChunks(playerPos: Vector3, onProgress: (percent: number) => void) {
+  async generateInitialChunks(playerPos: Vector3, onProgress: (percent: number) => void): Promise<void> {
     const chunkX = Math.floor(playerPos.x / this.CHUNK_SIZE);
     const chunkZ = Math.floor(playerPos.z / this.CHUNK_SIZE);
     this.lastChunkX = chunkX;
@@ -79,29 +86,44 @@ export class ChunkManagerService implements WorldBuilder {
       }
     }
 
-    const totalChunks = neededChunks.size;
-    let processed = 0;
-    const batchSize = 4; // Process chunks in small batches to keep UI responsive
+    // Setup tracking
+    this.isInitialLoading = true;
+    this.initialLoadTotal = neededChunks.size;
+    this.initialLoadCount = 0;
+    this.initialLoadProgressCallback = onProgress;
+    
+    // If no chunks needed (unlikely), resolve immediately
+    if (this.initialLoadTotal === 0) return Promise.resolve();
 
+    const completionPromise = new Promise<void>(resolve => {
+        this.initialLoadResolver = resolve;
+    });
+
+    const batchSize = 4; // Dispatch chunks in small batches
     const chunksArray = Array.from(neededChunks);
     
-    for (let i = 0; i < chunksArray.length; i += batchSize) {
-        const batch = chunksArray.slice(i, i + batchSize);
-        
-        for (const key of batch) {
-             if (!this.loadedChunks.has(key)) {
-                const [cx, cz] = key.split(',').map(Number);
-                this.loadChunk(cx, cz, this.seed);
-                this.loadedChunks.add(key);
-             }
-             processed++;
+    // Start dispatching
+    (async () => {
+        for (let i = 0; i < chunksArray.length; i += batchSize) {
+            const batch = chunksArray.slice(i, i + batchSize);
+            
+            for (const key of batch) {
+                if (!this.loadedChunks.has(key)) {
+                    const [cx, cz] = key.split(',').map(Number);
+                    this.loadChunk(cx, cz, this.seed);
+                    this.loadedChunks.add(key);
+                } else {
+                    // Already loaded? count it as done
+                    this.markChunkLoaded();
+                }
+            }
+            
+            // Yield to main thread to allow UI to render
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
+    })();
 
-        onProgress(Math.min(100, (processed / totalChunks) * 100));
-        
-        // Yield to main thread to allow UI to render
-        await new Promise(resolve => setTimeout(resolve, 0));
-    }
+    return completionPromise;
   }
 
   hasBlock(x: number, y: number, z: number): boolean {
@@ -121,6 +143,7 @@ export class ChunkManagerService implements WorldBuilder {
     this.lastChunkZ = -999999;
     this.batchBlocks = [];
     this.isBatching = false;
+    this.isInitialLoading = false;
   }
 
   update(playerPos: Vector3, forceAll: boolean = false) {
@@ -217,6 +240,9 @@ export class ChunkManagerService implements WorldBuilder {
             this.batchBlocks = [];
         }
         this.instancedRenderer.syncCounts();
+        
+        // In sync mode, chunk is done immediately
+        this.markChunkLoaded();
     }
   }
 
@@ -238,6 +264,28 @@ export class ChunkManagerService implements WorldBuilder {
      }
      
      this.instancedRenderer.syncCounts();
+     
+     // Mark as completed for initial loading tracking
+     this.markChunkLoaded();
+  }
+
+  private markChunkLoaded() {
+      if (!this.isInitialLoading) return;
+
+      this.initialLoadCount++;
+      const percent = Math.min(100, Math.floor((this.initialLoadCount / this.initialLoadTotal) * 100));
+      
+      if (this.initialLoadProgressCallback) {
+          this.initialLoadProgressCallback(percent);
+      }
+
+      if (this.initialLoadCount >= this.initialLoadTotal) {
+          this.isInitialLoading = false;
+          if (this.initialLoadResolver) {
+              this.initialLoadResolver();
+              this.initialLoadResolver = undefined;
+          }
+      }
   }
 
   unloadChunk(cx: number, cz: number) {

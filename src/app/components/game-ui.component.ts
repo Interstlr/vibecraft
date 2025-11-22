@@ -24,6 +24,7 @@ import { BlockIconService } from '../game/rendering/block-icon.service';
       <p>FPS: {{ store.fps() }}</p>
       <p>XYZ: {{ store.playerPosition().x }} / {{ store.playerPosition().y }} / {{ store.playerPosition().z }}</p>
       <p>Blocks: {{ store.blockCount() }}</p>
+      <p>Y: {{ store.playerPositionY() | number:'1.0-0' }}</p>
     </div>
 
     <!-- Version Display -->

@@ -3,19 +3,19 @@ import * as THREE from 'three';
 import { SceneManagerService } from '../core/scene-manager.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MaterialService } from '../world/resources/material.service';
+import { BLOCKS } from '../config/blocks.config';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ToolRendererService {
-  private axeGroup!: THREE.Group;
-  private pickaxeGroup!: THREE.Group;
-  private shovelGroup!: THREE.Group;
-  private swordGroup!: THREE.Group;
   private handGroup!: THREE.Group;
-  private blockGroup!: THREE.Group; // Held block
+  private itemGroup!: THREE.Group; // Holds both tools and blocks
   private isSwinging = false;
-  private currentToolGroup: THREE.Group | null = null;
+  private currentItemType: string | null = null;
+  
+  private toolMeshCache = new Map<string, THREE.Mesh>();
+  private processingTexture = new Set<string>();
 
   constructor(
     private sceneManager: SceneManagerService,
@@ -25,19 +25,24 @@ export class ToolRendererService {
 
   initialize() {
     const camera = this.sceneManager.getCamera();
-    this.axeGroup = this.createAxeModel();
-    this.pickaxeGroup = this.createPickaxeModel();
-    this.shovelGroup = this.createShovelModel();
-    this.swordGroup = this.createSwordModel();
-    this.handGroup = this.createHandModel();
-    this.blockGroup = this.createBlockModel();
     
-    camera.add(this.axeGroup);
-    camera.add(this.pickaxeGroup);
-    camera.add(this.shovelGroup);
-    camera.add(this.swordGroup);
+    this.handGroup = this.createHandModel();
+    this.itemGroup = new THREE.Group();
+    
+    // Placeholder mesh (invisible)
+    const placeholder = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.1), new THREE.MeshBasicMaterial({visible:false}));
+    this.itemGroup.add(placeholder);
+
+    // Block mesh (for blocks) - REUSED
+    const blockGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Slightly larger blocks in hand
+    const blockMat = new THREE.MeshBasicMaterial({ visible: false }); 
+    const blockMesh = new THREE.Mesh(blockGeo, blockMat);
+    blockMesh.name = 'block_item';
+    blockMesh.visible = false;
+    this.itemGroup.add(blockMesh);
+
     camera.add(this.handGroup);
-    camera.add(this.blockGroup);
+    camera.add(this.itemGroup);
   }
 
   setSwinging(active: boolean) {
@@ -45,307 +50,280 @@ export class ToolRendererService {
   }
 
   update(time: number, delta: number) {
-    if (!this.axeGroup || !this.pickaxeGroup || !this.shovelGroup || !this.swordGroup || !this.handGroup || !this.blockGroup) {
-      return;
-    }
+    if (!this.handGroup || !this.itemGroup) return;
 
     const selected = this.inventoryService.selectedItem();
     const itemType = selected.item;
     const hasItem = !!itemType && selected.count > 0;
+
+    if (itemType !== this.currentItemType) {
+        this.updateItemModel(itemType);
+        this.currentItemType = itemType;
+    }
+
+    const isTool = this.isToolOrItem(itemType);
+    const isBlock = hasItem && !isTool; 
+    const showHand = !hasItem || (hasItem && !isTool && !isBlock);
+
+    // Visibility management
+    const blockMesh = this.itemGroup.getObjectByName('block_item') as THREE.Mesh;
     
-    // Check if item is a tool
-    const toolType = this.getToolType(itemType);
-    const isBlock = hasItem && !toolType && itemType !== 'stick' && itemType !== 'coal'; // Assume everything else is block for now
-    const shouldShowHand = !hasItem || (hasItem && !toolType && !isBlock);
-
-    // TOOL (axe, pickaxe, shovel, sword)
-    if (toolType) {
-      // Hide all tool groups first
-      this.axeGroup.visible = false;
-      this.pickaxeGroup.visible = false;
-      this.shovelGroup.visible = false;
-      this.swordGroup.visible = false;
-      this.blockGroup.visible = false;
-      this.handGroup.visible = false; // Hand is part of tool model implicitly or hidden
-
-      // Show appropriate tool group
-      const toolGroup = this.getToolGroup(toolType);
-      if (toolGroup) {
-        toolGroup.visible = true;
-        this.currentToolGroup = toolGroup;
-
-        // Update tool materials based on item type
-        this.updateToolMaterials(toolGroup, itemType!);
-
-        // Animate tool swing
-        if (this.isSwinging) {
-          const swingSpeed = toolType === 'sword' ? 18 : 15; // Sword swings faster
-          const swingAmount = toolType === 'sword' ? 1.5 : 1.2;
-          toolGroup.rotation.x = Math.sin((time / 1000) * swingSpeed) * swingAmount;
-          toolGroup.rotation.z = Math.PI / 8 + Math.sin((time / 1000) * swingSpeed) * 0.5;
-          toolGroup.position.y = -0.5 + Math.sin((time / 1000) * swingSpeed) * 0.2;
-        } else {
-          toolGroup.rotation.x = THREE.MathUtils.lerp(toolGroup.rotation.x, 0, 10 * delta);
-          toolGroup.rotation.z = Math.PI / 8;
-          toolGroup.position.y = -0.5;
-        }
-      }
-    } 
-    // BLOCK
-    else if (isBlock) {
-      this.blockGroup.visible = true;
-      this.axeGroup.visible = false;
-      this.pickaxeGroup.visible = false;
-      this.shovelGroup.visible = false;
-      this.swordGroup.visible = false;
-      this.handGroup.visible = true; // Show hand holding block
-
-      // Update block material if changed
-      const material = this.materialService.getMaterial(itemType!);
-      const mesh = this.blockGroup.children[0] as THREE.Mesh;
-      if (mesh) {
-          mesh.material = material;
-      }
-
-      const swingSpeed = 10;
-      const baseRotX = 0;
-      const baseRotY = Math.PI / 4; 
-      const basePosX = 0.5; 
-      const basePosY = -0.4; 
-      const basePosZ = -0.8;
-
-      if (this.isSwinging) {
-          // Block punch animation
-          const swing = Math.sin((time / 1000) * swingSpeed);
-          this.blockGroup.rotation.x = baseRotX + swing * 0.5;
-          this.blockGroup.rotation.y = baseRotY + swing * 0.5;
-          this.blockGroup.position.set(
-              basePosX + swing * 0.2, 
-              basePosY + swing * 0.2, 
-              basePosZ + swing * 0.2
-          );
-      } else {
-          // Idle bobbing
-          const idleBob = Math.sin(time / 800) * 0.02;
-          this.blockGroup.rotation.x = THREE.MathUtils.lerp(this.blockGroup.rotation.x, baseRotX, 6 * delta);
-          this.blockGroup.rotation.y = THREE.MathUtils.lerp(this.blockGroup.rotation.y, baseRotY, 6 * delta);
-          this.blockGroup.position.set(basePosX, basePosY + idleBob, basePosZ);
-      }
-      
-      // Sync hand to block (simplified)
-      this.handGroup.position.copy(this.blockGroup.position).add(new THREE.Vector3(0.2, -0.3, 0.2));
-      this.handGroup.rotation.copy(this.blockGroup.rotation);
-
-    } 
-    // EMPTY HAND
-    else if (shouldShowHand) {
-      this.handGroup.visible = true;
-      this.axeGroup.visible = false;
-      this.pickaxeGroup.visible = false;
-      this.shovelGroup.visible = false;
-      this.swordGroup.visible = false;
-      this.blockGroup.visible = false;
-
-      const swingSpeed = 9;
-      const baseRotX = -0.4;
-      const baseRotZ = Math.PI / 10;
-      const basePosY = -0.65;
-      
-      // Reset hand transform from block mode
-      this.handGroup.position.set(0.72, -0.65, -0.9);
-      this.handGroup.rotation.set(-Math.PI / 5, Math.PI / 11, Math.PI / 18);
-
-      if (this.isSwinging) {
-        const swing = Math.sin((time / 1000) * swingSpeed);
-        this.handGroup.rotation.x = baseRotX + swing * 0.35;
-        this.handGroup.rotation.z = baseRotZ + swing * 0.18;
-        this.handGroup.position.y = basePosY + swing * 0.04;
-      } else {
-        const idleBob = Math.sin(time / 1400) * 0.008;
-        this.handGroup.rotation.x = THREE.MathUtils.lerp(this.handGroup.rotation.x, baseRotX, 6 * delta);
-        this.handGroup.rotation.z = THREE.MathUtils.lerp(this.handGroup.rotation.z, baseRotZ, 6 * delta);
-        this.handGroup.position.y = THREE.MathUtils.lerp(this.handGroup.position.y, basePosY + idleBob, 6 * delta);
-      }
-    } else {
-       // Fallback hide all
-       this.axeGroup.visible = false;
-       this.pickaxeGroup.visible = false;
-       this.shovelGroup.visible = false;
-       this.swordGroup.visible = false;
-       this.handGroup.visible = false;
-       this.blockGroup.visible = false;
-       this.currentToolGroup = null;
-    }
-  }
-
-  private getToolType(itemType: string | null): 'axe' | 'pickaxe' | 'shovel' | 'sword' | null {
-    if (!itemType) return null;
-    
-    if (itemType === 'axe' || itemType === 'wooden_axe' || itemType === 'stone_axe') {
-      return 'axe';
-    }
-    if (itemType === 'wooden_pickaxe' || itemType === 'stone_pickaxe') {
-      return 'pickaxe';
-    }
-    if (itemType === 'wooden_shovel' || itemType === 'stone_shovel') {
-      return 'shovel';
-    }
-    if (itemType === 'wooden_sword' || itemType === 'stone_sword') {
-      return 'sword';
-    }
-    return null;
-  }
-
-  private getToolGroup(toolType: 'axe' | 'pickaxe' | 'shovel' | 'sword'): THREE.Group | null {
-    switch (toolType) {
-      case 'axe': return this.axeGroup;
-      case 'pickaxe': return this.pickaxeGroup;
-      case 'shovel': return this.shovelGroup;
-      case 'sword': return this.swordGroup;
-      default: return null;
-    }
-  }
-
-  private updateToolMaterials(toolGroup: THREE.Group, itemType: string) {
-    // Determine material colors based on tool tier
-    const isWooden = itemType.includes('wooden');
-    const handleColor = 0x8d6e63; // Always wood handle (brown)
-    const headColor = isWooden ? 0x8d6e63 : 0x757575; // Wood (brown) or stone (gray) head
-    
-    // Special colors for sword blade edge
-    const bladeEdgeColor = 0xeeeeee; // Light gray for sharp edges
-    
-    toolGroup.children.forEach((child, index) => {
-      if (child instanceof THREE.Mesh) {
-        const mesh = child as THREE.Mesh;
-        const material = mesh.material as THREE.MeshLambertMaterial;
-        
-        // First child is usually handle
-        if (index === 0) {
-          material.color.setHex(handleColor);
-        } 
-        // Last child is often blade edge (for sword) or tool edge
-        else if (itemType.includes('sword') && index === toolGroup.children.length - 1) {
-          material.color.setHex(bladeEdgeColor);
-        }
-        // Other parts are head/blade
-        else {
-          material.color.setHex(headColor);
-        }
-      }
+    // Hide all cached tool meshes first
+    this.itemGroup.children.forEach(child => {
+        if (child.name.startsWith('tool_')) child.visible = false;
     });
+
+    if (isTool && itemType) {
+        const toolMesh = this.toolMeshCache.get(itemType);
+        if (toolMesh) {
+            toolMesh.visible = true;
+        }
+        blockMesh.visible = false;
+        this.handGroup.visible = false; 
+    } else if (isBlock) {
+        blockMesh.visible = true;
+        this.handGroup.visible = true;
+    } else {
+        blockMesh.visible = false;
+        this.handGroup.visible = true;
+    }
+
+    this.animateItem(time, delta, isTool, isBlock);
   }
 
-  private createAxeModel(): THREE.Group {
-    const group = new THREE.Group();
-    const handleGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
-    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.y = 0;
-    group.add(handle);
-
-    const headGeo = new THREE.BoxGeometry(0.25, 0.12, 0.08);
-    const headMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.set(0.08, 0.25, 0);
-    group.add(head);
-
-    const edgeGeo = new THREE.BoxGeometry(0.05, 0.12, 0.082);
-    const edgeMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
-    const edge = new THREE.Mesh(edgeGeo, edgeMat);
-    edge.position.set(0.22, 0.25, 0);
-    group.add(edge);
-
-    group.position.set(0.5, -0.5, -0.8);
-    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
-    group.visible = false;
-    return group;
+  private isToolOrItem(type: string | null): boolean {
+      if (!type) return false;
+      const def = BLOCKS[type];
+      return !!def?.isTool || type === 'stick' || type === 'coal' || !!def?.texture?.includes('/item/');
   }
 
-  private createPickaxeModel(): THREE.Group {
-    const group = new THREE.Group();
-    const handleGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
-    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.y = 0;
-    group.add(handle);
+  private updateItemModel(type: string | null) {
+      if (!type) return;
 
-    // Pickaxe head (two crossed picks)
-    const pick1Geo = new THREE.BoxGeometry(0.15, 0.08, 0.08);
-    const pick1Mat = new THREE.MeshLambertMaterial({ color: 0x757575 });
-    const pick1 = new THREE.Mesh(pick1Geo, pick1Mat);
-    pick1.position.set(0.06, 0.25, 0);
-    pick1.rotation.z = Math.PI / 6;
-    group.add(pick1);
+      const isTool = this.isToolOrItem(type);
 
-    const pick2Geo = new THREE.BoxGeometry(0.15, 0.08, 0.08);
-    const pick2Mat = new THREE.MeshLambertMaterial({ color: 0x757575 });
-    const pick2 = new THREE.Mesh(pick2Geo, pick2Mat);
-    pick2.position.set(0.06, 0.25, 0);
-    pick2.rotation.z = -Math.PI / 6;
-    group.add(pick2);
+      if (isTool) {
+          if (this.toolMeshCache.has(type) || this.processingTexture.has(type)) return;
+          
+          const def = BLOCKS[type];
+          let textureUrl = def?.texture;
+          
+          if (!textureUrl) {
+             if (type.includes('axe') || type.includes('pickaxe') || type.includes('shovel') || type.includes('sword')) {
+                 textureUrl = `assets/minecraft/textures/item/${type}.png`;
+             }
+          }
 
-    group.position.set(0.5, -0.5, -0.8);
-    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
-    group.visible = false;
-    return group;
+          if (textureUrl) {
+              this.processingTexture.add(type);
+              this.generateExtrudedMesh(type, textureUrl).then(mesh => {
+                  if (mesh) {
+                      mesh.name = `tool_${type}`;
+                      // Scale tool
+                      mesh.geometry.translate(0.5, 0.5, 0);
+                      mesh.scale.set(0.65, 0.65, 0.65); 
+                      this.itemGroup.add(mesh);
+                      this.toolMeshCache.set(type, mesh);
+                  }
+                  this.processingTexture.delete(type);
+              });
+          }
+      } else {
+          // Block
+          const blockMesh = this.itemGroup.getObjectByName('block_item') as THREE.Mesh;
+          const material = this.materialService.getMaterial(type);
+          if (material && blockMesh) {
+              blockMesh.material = material;
+          }
+      }
   }
 
-  private createShovelModel(): THREE.Group {
-    const group = new THREE.Group();
-    const handleGeo = new THREE.BoxGeometry(0.06, 0.6, 0.06);
-    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.y = 0;
-    group.add(handle);
+  private async generateExtrudedMesh(type: string, url: string): Promise<THREE.Mesh | null> {
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "Anonymous";
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) { resolve(null); return; }
+              
+              ctx.drawImage(img, 0, 0);
+              const data = ctx.getImageData(0, 0, img.width, img.height).data;
+              
+              const geometries: THREE.BoxGeometry[] = [];
+              const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+              
+              const w = img.width;
+              const h = img.height;
+              const pixelSize = 1 / 16; // Assuming 16x16 standard size normalized to 1 unit
+              
+              // Create merged geometry
+              // For better performance we construct a single BufferGeometry manually
+              const positions: number[] = [];
+              const colors: number[] = [];
+              const normals: number[] = [];
+              const indices: number[] = [];
+              let vIndex = 0;
 
-    // Shovel blade
-    const bladeGeo = new THREE.BoxGeometry(0.12, 0.18, 0.06);
-    const bladeMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
-    const blade = new THREE.Mesh(bladeGeo, bladeMat);
-    blade.position.set(0.04, 0.28, 0);
-    blade.rotation.x = -Math.PI / 12;
-    group.add(blade);
+              const addBox = (x: number, y: number, r: number, g: number, b: number) => {
+                  // Center of box
+                  const cx = (x - w/2) * pixelSize;
+                  const cy = -(y - h/2) * pixelSize; // Flip Y
+                  const cz = 0;
+                  const hs = pixelSize / 2; // Half size
+                  const thickness = pixelSize / 2; // Extrusion depth
 
-    group.position.set(0.5, -0.5, -0.8);
-    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
-    group.visible = false;
-    return group;
+                  // 6 faces, 4 verts each
+                  // Front (z+)
+                  positions.push(cx-hs, cy-hs, thickness, cx+hs, cy-hs, thickness, cx+hs, cy+hs, thickness, cx-hs, cy+hs, thickness);
+                  normals.push(0,0,1, 0,0,1, 0,0,1, 0,0,1);
+                  // Back (z-)
+                  positions.push(cx+hs, cy-hs, -thickness, cx-hs, cy-hs, -thickness, cx-hs, cy+hs, -thickness, cx+hs, cy+hs, -thickness);
+                  normals.push(0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1);
+                  // Top (y+)
+                  positions.push(cx-hs, cy+hs, thickness, cx+hs, cy+hs, thickness, cx+hs, cy+hs, -thickness, cx-hs, cy+hs, -thickness);
+                  normals.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
+                  // Bottom (y-)
+                  positions.push(cx-hs, cy-hs, -thickness, cx+hs, cy-hs, -thickness, cx+hs, cy-hs, thickness, cx-hs, cy-hs, thickness);
+                  normals.push(0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0);
+                  // Right (x+)
+                  positions.push(cx+hs, cy-hs, thickness, cx+hs, cy-hs, -thickness, cx+hs, cy+hs, -thickness, cx+hs, cy+hs, thickness);
+                  normals.push(1,0,0, 1,0,0, 1,0,0, 1,0,0);
+                  // Left (x-)
+                  positions.push(cx-hs, cy-hs, -thickness, cx-hs, cy-hs, thickness, cx-hs, cy+hs, thickness, cx-hs, cy+hs, -thickness);
+                  normals.push(-1,0,0, -1,0,0, -1,0,0, -1,0,0);
+
+                  for(let i=0; i<24; i++) {
+                      colors.push(r/255, g/255, b/255);
+                  }
+
+                  // Indices
+                  for(let i=0; i<6; i++) {
+                      const base = vIndex + i*4;
+                      indices.push(base, base+1, base+2, base, base+2, base+3);
+                  }
+                  vIndex += 24;
+              };
+
+              for (let y = 0; y < h; y++) {
+                  for (let x = 0; x < w; x++) {
+                      const i = (y * w + x) * 4;
+                      const alpha = data[i + 3];
+                      if (alpha > 10) { // Threshold
+                          addBox(x, y, data[i], data[i+1], data[i+2]);
+                      }
+                  }
+              }
+
+              const geometry = new THREE.BufferGeometry();
+              geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+              geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+              geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+              geometry.setIndex(indices);
+              
+              resolve(new THREE.Mesh(geometry, material));
+          };
+          img.src = url;
+      });
   }
 
-  private createSwordModel(): THREE.Group {
-    const group = new THREE.Group();
-    const handleGeo = new THREE.BoxGeometry(0.06, 0.4, 0.06);
-    const handleMat = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.y = -0.1;
-    group.add(handle);
+  private animateItem(time: number, delta: number, isTool: boolean, isBlock: boolean) {
+    // Base positions
+    const handBasePos = new THREE.Vector3(0.72, -0.65, -0.9);
+    const handBaseRot = new THREE.Euler(-Math.PI / 5, Math.PI / 11, Math.PI / 18);
 
-    // Sword guard
-    const guardGeo = new THREE.BoxGeometry(0.15, 0.05, 0.05);
-    const guardMat = new THREE.MeshLambertMaterial({ color: 0x757575 });
-    const guard = new THREE.Mesh(guardGeo, guardMat);
-    guard.position.set(0, 0.1, 0);
-    group.add(guard);
+    // Animate Hand
+    if (this.handGroup.visible) {
+        if (isBlock) {
+             this.handGroup.position.copy(this.itemGroup.position).add(new THREE.Vector3(0.2, -0.3, 0.2));
+             this.handGroup.rotation.copy(this.itemGroup.rotation);
+        } else {
+            if (this.isSwinging) {
+                const swingSpeed = 9;
+                const swing = Math.sin((time / 1000) * swingSpeed);
+                this.handGroup.rotation.x = handBaseRot.x + swing * 0.35;
+                this.handGroup.rotation.z = handBaseRot.z + swing * 0.18;
+                this.handGroup.position.y = handBasePos.y + swing * 0.04;
+            } else {
+                const idleBob = Math.sin(time / 1400) * 0.008;
+                this.handGroup.position.set(handBasePos.x, handBasePos.y + idleBob, handBasePos.z);
+                this.handGroup.rotation.copy(handBaseRot);
+            }
+        }
+    }
 
-    // Sword blade
-    const bladeGeo = new THREE.BoxGeometry(0.04, 0.35, 0.04);
-    const bladeMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
-    const blade = new THREE.Mesh(bladeGeo, bladeMat);
-    blade.position.set(0, 0.35, 0);
-    group.add(blade);
+    // Animate Item Group
+    if (isTool) {
+        // Pivot is now at the handle (bottom-left of tool).
+        // We position the handle in the hand (bottom-right of screen).
+        const basePos = new THREE.Vector3(0.5, -0.6, -0.7);
+        // Initial rotation to point the tool forward/up/left
+        const baseRot = new THREE.Euler(0, -Math.PI / 2 + 0.3, Math.PI / 10); 
 
-    // Blade tip
-    const tipGeo = new THREE.BoxGeometry(0.02, 0.08, 0.02);
-    const tipMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
-    const tip = new THREE.Mesh(tipGeo, tipMat);
-    tip.position.set(0, 0.57, 0);
-    group.add(tip);
+        if (this.isSwinging) {
+             const swingSpeed = 12;
+             // Sine wave for swing cycle (-1 to 1)
+             const s = Math.sin((time / 1000) * swingSpeed);
+             
+             // Map s to a swing progress (0 to 1 approx) for unidirectional look
+             // We want the "hit" to be when s is close to peak.
+             
+             // Move the whole tool towards center (X decreases) and forward (Z decreases)
+             // Base X is 0.5. We want to go towards 0.
+             this.itemGroup.position.set(
+                 basePos.x - Math.max(0, s) * 0.25, // Less movement towards center
+                 basePos.y + s * 0.05,              // Less lift
+                 basePos.z - Math.max(0, s) * 0.2   // Less punch forward
+             );
 
-    group.position.set(0.5, -0.5, -0.8);
-    group.rotation.set(0, -Math.PI / 4, Math.PI / 8);
-    group.visible = false;
-    return group;
+             // Rotate to emphasize the forward chop
+             this.itemGroup.rotation.set(
+                 baseRot.x + s * 0.5,  // Pitch forward
+                 baseRot.y + s * 0.8,  // Yaw inward
+                 baseRot.z + s * 0.5   // Roll
+             );
+        } else {
+             this.itemGroup.position.copy(basePos);
+             // Idle breathing
+             this.itemGroup.position.y += Math.sin(time / 800) * 0.005;
+             this.itemGroup.rotation.set(
+                THREE.MathUtils.lerp(this.itemGroup.rotation.x, baseRot.x, 10 * delta),
+                baseRot.y,
+                baseRot.z
+             );
+        }
+    } else if (isBlock) {
+        const basePos = new THREE.Vector3(0.5, -0.4, -0.8);
+        const baseRot = new THREE.Euler(0, Math.PI/4, 0);
+
+        if (this.isSwinging) {
+            const swingSpeed = 10;
+            const swing = Math.sin((time / 1000) * swingSpeed);
+            this.itemGroup.rotation.set(
+                baseRot.x + swing * 0.5,
+                baseRot.y + swing * 0.5,
+                baseRot.z
+            );
+             this.itemGroup.position.set(
+                basePos.x + swing * 0.2,
+                basePos.y + swing * 0.2,
+                basePos.z + swing * 0.2
+             );
+        } else {
+            this.itemGroup.position.set(
+                basePos.x, 
+                basePos.y + Math.sin(time / 800) * 0.02, 
+                basePos.z
+            );
+            this.itemGroup.rotation.set(
+                THREE.MathUtils.lerp(this.itemGroup.rotation.x, baseRot.x, 6 * delta),
+                THREE.MathUtils.lerp(this.itemGroup.rotation.y, baseRot.y, 6 * delta),
+                baseRot.z
+            );
+        }
+    }
   }
 
   private createHandModel(): THREE.Group {
@@ -372,20 +350,5 @@ export class ToolRendererService {
     group.rotation.set(-Math.PI / 5, Math.PI / 11, Math.PI / 18);
     group.visible = false;
     return group;
-  }
-
-  private createBlockModel(): THREE.Group {
-      const group = new THREE.Group();
-      // Scale 0.4 seems right for hand
-      const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-      // Initial material, will be replaced
-      const material = new THREE.MeshBasicMaterial({ visible: false }); 
-      const mesh = new THREE.Mesh(geometry, material);
-      group.add(mesh);
-      
-      group.position.set(0.5, -0.4, -0.8);
-      group.rotation.set(0, Math.PI/4, 0);
-      group.visible = false;
-      return group;
   }
 }

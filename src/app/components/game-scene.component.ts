@@ -129,6 +129,12 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
         // Start game loop only after world is ready
         this.gameLoop.start();
         this.chickenSystem.spawnChicken(new THREE.Vector3(1, spawnY + 5, -3));
+
+        // Hide loading screen only after everything is ready
+        // Wait a tiny bit to ensure the first frame is rendered
+        setTimeout(() => {
+             this.gameState.hideLoadingScreen();
+        }, 100);
     };
 
     if (environment.multiplayer) {
