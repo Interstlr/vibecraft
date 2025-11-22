@@ -7,11 +7,12 @@ import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
   providedIn: 'root'
 })
 export class WorldGeneratorService {
-  private treeGenerator = inject(TreeGeneratorService);
   private readonly CHUNK_SIZE = 16;
   private noise2D: NoiseFunction2D | null = null;
   private currentSeed: number | null = null;
   
+  constructor(private treeGenerator: TreeGeneratorService) {}
+
   // Generate a 16x16 chunk at the specified chunk coordinates
   generateChunk(chunkX: number, chunkZ: number, world: WorldBuilder, seed: number) {
     const startX = chunkX * this.CHUNK_SIZE;
