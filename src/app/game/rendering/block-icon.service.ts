@@ -102,6 +102,10 @@ export class BlockIconService {
   }
 
   private generateStickIcon(blockDef?: any): string {
+    if (blockDef?.texture) {
+      return blockDef.texture;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
@@ -131,6 +135,10 @@ export class BlockIconService {
   }
 
   private generateToolIcon(type: string, blockDef: any): string {
+    if (blockDef?.texture) {
+      return blockDef.texture;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = 64;
     canvas.height = 64;
@@ -255,11 +263,11 @@ export class BlockIconService {
     ctx.fillRect(-8, 10, 16, 4);
     
     // Blade
-    ctx.fillStyle = '#EEEEEE';
+    ctx.fillStyle = bladeColor;
     ctx.fillRect(-1.5, -20, 3, 28);
     
     // Blade tip
-    ctx.fillStyle = '#EEEEEE';
+    ctx.fillStyle = bladeColor;
     ctx.beginPath();
     ctx.moveTo(-1.5, -20);
     ctx.lineTo(0, -26);

@@ -12,6 +12,7 @@ export class GameStateService {
   // --- Stats ---
   fps = signal(0);
   blockCount = signal(0);
+  playerPositionY = signal(0);
   playerPosition = signal({ x: 0, y: 0, z: 0 });
 
   // --- Inventory ---
@@ -57,12 +58,15 @@ export class GameStateService {
 
   setLoadingProgress(progress: number) {
     this.loadingProgress.set(progress);
-    if (progress >= 100) {
-        // Small delay to let the user see 100%
-        setTimeout(() => {
-            this.isLoading.set(false);
-        }, 500);
-    }
+    // Note: We no longer automatically hide loading screen at 100%
+    // It must be hidden explicitly via hideLoadingScreen()
+  }
+  
+  hideLoadingScreen() {
+    // Small delay to ensure last frame renders
+    setTimeout(() => {
+      this.isLoading.set(false);
+    }, 100);
   }
 
   // Inventory Management

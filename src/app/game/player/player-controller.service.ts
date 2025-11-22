@@ -6,6 +6,7 @@ import { BlockPlacerService } from '../world/block-placer.service';
 import { PLAYER_CONFIG } from '../../config/player.config';
 import { MultiplayerService } from '../networking/multiplayer.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { GameStateService } from '../../services/game-state.service';
 
 @Injectable({
   providedIn: 'root',
@@ -23,7 +24,8 @@ export class PlayerControllerService {
     private input: InputManagerService,
     private blockPlacer: BlockPlacerService,
     private multiplayer: MultiplayerService,
-    private inventory: InventoryService
+    private inventory: InventoryService,
+    private gameState: GameStateService
   ) {}
 
   get position(): THREE.Vector3 {
@@ -99,6 +101,8 @@ export class PlayerControllerService {
     if (camera.position.y < this.MIN_WORLD_Y) {
       this.resetPosition();
     }
+
+    this.gameState.playerPositionY.set(camera.position.y - PLAYER_CONFIG.eyeHeight);
 
     // Network sync
     const now = performance.now();

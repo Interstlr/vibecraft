@@ -27,6 +27,7 @@ export class InputManagerService {
   private movement: MovementState = { forward: false, backward: false, left: false, right: false };
   private jumpActive = false;
   private sprintActive = false;
+  private explicitPause = false;
 
   private keyDownHandler = (event: KeyboardEvent) => this.handleKeyDown(event);
   private keyUpHandler = (event: KeyboardEvent) => this.handleKeyUp(event);
@@ -48,6 +49,7 @@ export class InputManagerService {
       if (this.store.isMenuOpen()) {
         this.store.closeMenus();
       }
+      this.explicitPause = false;
     });
 
     this.controls.addEventListener('unlock', () => {
@@ -55,6 +57,11 @@ export class InputManagerService {
         this.callbacks.onPrimaryUp();
       }
       this.jumpActive = false;
+
+      if (this.explicitPause && this.store.activeMenu() === 'none') {
+         this.store.openPauseMenu();
+      }
+      this.explicitPause = false;
     });
 
     window.addEventListener('keydown', this.keyDownHandler);
@@ -103,13 +110,11 @@ export class InputManagerService {
         if (!this.controls.isLocked) {
           this.controls.lock();
         }
+        event.preventDefault();
       } else {
-        this.store.openPauseMenu();
-        if (this.controls.isLocked) {
-          this.controls.unlock();
-        }
+        this.explicitPause = true;
+        this.controls.unlock();
       }
-      event.preventDefault();
       return;
     }
 

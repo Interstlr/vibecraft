@@ -4,6 +4,7 @@ import { WorldGeneratorService } from '../world/generation/world-generator.servi
 import { TreeGeneratorService } from '../world/generation/tree-generator.service';
 import { BLOCKS } from '../config/blocks.config';
 
+// Force rebuild
 const treeGenerator = new TreeGeneratorService();
 const worldGenerator = new WorldGeneratorService(treeGenerator);
 

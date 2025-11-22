@@ -12,7 +12,7 @@ import { GameStateService } from '../services/game-state.service';
       
       <!-- Tiled Dirt Background -->
       <div class="absolute inset-0 z-0" 
-           style="background-image: url('assets/textures/dirt.png'); 
+           style="background-image: url('assets/minecraft/textures/block/dirt.png'); 
                   background-size: 64px; 
                   image-rendering: pixelated;">
         <div class="absolute inset-0 bg-black/50"></div>

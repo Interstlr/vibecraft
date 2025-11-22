@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../../config/blocks.config';
@@ -76,7 +75,7 @@ export class MaterialService {
             }
             
             // 3. Fallback to block default
-            return { texture: def.texture, procedural: def.procedural };
+            return { texture: def.texture, procedural: def.procedural, tint: def.tint };
         };
 
         // Create materials for all 6 faces
@@ -97,6 +96,11 @@ export class MaterialService {
 
   private createMaterial(config: BlockFaceDefinition, transparent: boolean = false, opacity?: number): THREE.Material {
       let texture: THREE.Texture;
+      let color = 0xffffff;
+
+      if (config.tint) {
+          color = this.parseColor(config.tint);
+      }
 
       if (config.texture) {
           texture = this.textureLoader.load(config.texture);
@@ -120,6 +124,7 @@ export class MaterialService {
 
       return new THREE.MeshLambertMaterial({ 
           map: texture, 
+          color: color,
           transparent: isTrueTransparent,
           opacity: effectiveOpacity,
           alphaTest: isCutout ? 0.5 : 0,

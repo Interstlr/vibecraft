@@ -16,16 +16,16 @@ export class CrackOverlayService {
 
   initialize() {
     const texturePaths = [
-      'assets/textures/destroy_stage_0.png',
-      'assets/textures/destroy_stage_1.png',
-      'assets/textures/destroy_stage_2.png',
-      'assets/textures/destroy_stage_3.png',
-      'assets/textures/destroy_stage_4.png',
-      'assets/textures/destroy_stage_5.png',
-      'assets/textures/destroy_stage_6.png',
-      'assets/textures/destroy_stage_7.png',
-      'assets/textures/destroy_stage_8.png',
-      'assets/textures/destroy_stage_9.png',
+      'assets/minecraft/textures/block/destroy_stage_0.png',
+      'assets/minecraft/textures/block/destroy_stage_1.png',
+      'assets/minecraft/textures/block/destroy_stage_2.png',
+      'assets/minecraft/textures/block/destroy_stage_3.png',
+      'assets/minecraft/textures/block/destroy_stage_4.png',
+      'assets/minecraft/textures/block/destroy_stage_5.png',
+      'assets/minecraft/textures/block/destroy_stage_6.png',
+      'assets/minecraft/textures/block/destroy_stage_7.png',
+      'assets/minecraft/textures/block/destroy_stage_8.png',
+      'assets/minecraft/textures/block/destroy_stage_9.png',
     ];
 
     this.crackMaterials = texturePaths.map((path) => {
