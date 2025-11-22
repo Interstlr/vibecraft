@@ -101,6 +101,7 @@ export class MaterialService {
       if (config.texture) {
           texture = this.textureLoader.load(config.texture);
           texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestMipmapNearestFilter;
           texture.colorSpace = THREE.SRGBColorSpace;
       } else if (config.procedural) {
           texture = this.createProceduralTexture(
@@ -123,7 +124,7 @@ export class MaterialService {
           opacity: effectiveOpacity,
           alphaTest: isCutout ? 0.5 : 0,
           depthWrite: !isTrueTransparent,
-          side: transparent ? THREE.DoubleSide : THREE.FrontSide
+          side: isTrueTransparent ? THREE.DoubleSide : THREE.FrontSide
       });
   }
 
