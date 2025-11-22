@@ -74,6 +74,9 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       onDropItem: () => this.playerInteraction.handleDropItem(),
     });
 
+    // Apply fog settings from ChunkManager
+    this.sceneManager.updateFog(this.chunkManager.getRenderDistanceBlocks());
+
     this.initializeWorld();
   }
 

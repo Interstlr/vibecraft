@@ -78,12 +78,8 @@ export class GameLoopService {
     const delta = Math.min((time - this.prevTime) / 1000, 0.1);
     this.prevTime = time;
 
-    // Chunk update throttle
-    this.chunkUpdateTimer += delta;
-    if (this.chunkUpdateTimer >= 0.1) {
-      this.chunkUpdateTimer = 0;
-      this.chunkManager.update(this.playerController.position);
-    }
+    // Chunk update logic - run every frame with time budget
+    this.chunkManager.update(this.playerController.position);
 
     if (Math.random() > 0.95 && delta > 0) {
       this.store.fps.set(Math.round(1 / delta));

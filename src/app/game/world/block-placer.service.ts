@@ -171,6 +171,23 @@ export class BlockPlacerService {
     this.store.blockCount.set(this.blockData.size);
   }
 
+  addHiddenBlocks(blocks: {x: number, y: number, z: number, type: string}[]) {
+    for (const b of blocks) {
+        const key = this.getKey(b.x, b.y, b.z);
+        if (this.blockData.has(key)) continue;
+        
+        // Add to store but with instanceId = -1 (hidden)
+        this.blockData.set(key, { type: b.type, instanceId: -1 });
+        
+        const chunkKey = this.getChunkKey(b.x, b.z);
+        if (!this.chunkBlocks.has(chunkKey)) {
+            this.chunkBlocks.set(chunkKey, new Set());
+        }
+        this.chunkBlocks.get(chunkKey)!.add(key);
+    }
+    this.store.blockCount.set(this.blockData.size);
+  }
+
   // Добавьте этот helper-метод в класс
   private isSurroundedByBatch(b: {x: number, y: number, z: number}, batchKeys: Set<string>): boolean {
       // Проверяем 6 соседей. Если ВСЕ они есть в batchKeys, значит блок внутри массива

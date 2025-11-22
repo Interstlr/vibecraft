@@ -16,11 +16,12 @@ export class SceneManagerService {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(WORLD_CONFIG.backgroundColor);
-    this.scene.fog = new THREE.Fog(
-      WORLD_CONFIG.backgroundColor,
-      WORLD_CONFIG.fogNear,
-      WORLD_CONFIG.fogFar,
-    );
+
+    // Use FogExp2 for more natural, distance-based fog that doesn't rotate with camera
+    // Density approx calculation: 1 / distance
+    // For render distance 100, we want fog to be thick at 100.
+    // 0.015 density means ~95% fog at 100-150 blocks
+    this.scene.fog = new THREE.FogExp2(WORLD_CONFIG.backgroundColor, 0.012);
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.camera.position.set(0, 10, 0);
@@ -36,6 +37,20 @@ export class SceneManagerService {
 
     window.addEventListener('resize', this.resizeHandler);
   }
+
+  updateFog(renderDistanceBlocks: number) {
+    if (this.scene) {
+        // Calculate density based on render distance
+        // Formula: density = 3.0 / renderDistance (approx) makes it thick at the edge
+        // Reduced factor to 1.5 to push fog further away
+        const density = 1.5 / renderDistanceBlocks; 
+        this.scene.fog = new THREE.FogExp2(
+            WORLD_CONFIG.backgroundColor,
+            density
+        );
+    }
+  }
+
 
   getScene(): THREE.Scene {
     return this.scene;
@@ -84,4 +99,3 @@ export class SceneManagerService {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 }
-
