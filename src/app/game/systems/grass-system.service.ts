@@ -7,36 +7,43 @@ import { BlockPlacerService } from '../world/block-placer.service';
 })
 export class GrassSystemService {
   private grassTickTimer = 0;
-  private readonly GRASS_TICK_INTERVAL = 0.75;
-  private readonly GRASS_TICK_ATTEMPTS = 40;
+  private readonly GRASS_TICK_INTERVAL = 0.2; // Run more often but check fewer blocks per tick
+  private readonly GRASS_TICK_ATTEMPTS = 10;
   private readonly GRASS_LIGHT_SCAN_HEIGHT = 6;
 
   constructor(private blockPlacer: BlockPlacerService) {}
 
-  update(delta: number) {
+  update(delta: number, playerPos: THREE.Vector3) {
     this.grassTickTimer += delta;
     if (this.grassTickTimer < this.GRASS_TICK_INTERVAL) {
       return;
     }
     this.grassTickTimer = 0;
-    this.performGrassTicks();
+    this.performGrassTicks(playerPos);
   }
 
-  private performGrassTicks() {
-    if (this.blockPlacer.size() === 0) {
-      return;
-    }
-    const entries = this.blockPlacer.getEntries();
-    const attempts = Math.min(this.GRASS_TICK_ATTEMPTS, entries.length);
+  private performGrassTicks(playerPos: THREE.Vector3) {
+    // Optimization: Don't convert Map to Array (GC spike).
+    // Instead, use Monte Carlo sampling around the player.
+    
+    const range = 64; // Check within 4 chunks radius
+    const pX = Math.floor(playerPos.x);
+    const pY = Math.floor(playerPos.y);
+    const pZ = Math.floor(playerPos.z);
 
-    for (let i = 0; i < attempts; i++) {
-      const [key, block] = entries[Math.floor(Math.random() * entries.length)];
-      const [x, y, z] = key.split(',').map(Number);
+    for (let i = 0; i < this.GRASS_TICK_ATTEMPTS; i++) {
+      // Pick random block near player
+      const x = pX + Math.floor(Math.random() * range * 2 - range);
+      const z = pZ + Math.floor(Math.random() * range * 2 - range);
+      // Guess Y: usually surface is near player Y. Scan a bit up/down.
+      const y = pY + Math.floor(Math.random() * 16 - 8);
 
-      if (block.type === 'grass') {
+      const type = this.blockPlacer.getBlockType(x, y, z);
+
+      if (type === 'grass') {
         this.updateGrassBlock(x, y, z);
         this.trySpreadGrass(x, y, z);
-      } else if (block.type === 'dirt') {
+      } else if (type === 'dirt') {
         this.tryReviveDirt(x, y, z);
       }
     }

@@ -12,6 +12,12 @@ export class PlayerRaycasterService {
   private hitBlockPosition: THREE.Vector3 | null = null;
   private hitBlockNormal: THREE.Vector3 | null = null;
 
+  // Reusable objects to reduce GC
+  private _start = new THREE.Vector3();
+  private _direction = new THREE.Vector3();
+  private _hitNormal = new THREE.Vector3();
+  private _tempPos = new THREE.Vector3();
+
   constructor(
     private sceneManager: SceneManagerService,
     private blockPlacer: BlockPlacerService,
@@ -24,40 +30,43 @@ export class PlayerRaycasterService {
     this.highlight.hide();
 
     const camera = this.sceneManager.getCamera();
-    const start = camera.position.clone();
-    start.x += 0.5;
-    start.y += 0.5;
-    start.z += 0.5;
+    this._start.copy(camera.position);
+    this._start.x += 0.5;
+    this._start.y += 0.5;
+    this._start.z += 0.5;
 
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
+    camera.getWorldDirection(this._direction);
 
-    let x = Math.floor(start.x);
-    let y = Math.floor(start.y);
-    let z = Math.floor(start.z);
+    let x = Math.floor(this._start.x);
+    let y = Math.floor(this._start.y);
+    let z = Math.floor(this._start.z);
 
-    const stepX = Math.sign(direction.x);
-    const stepY = Math.sign(direction.y);
-    const stepZ = Math.sign(direction.z);
+    const stepX = Math.sign(this._direction.x);
+    const stepY = Math.sign(this._direction.y);
+    const stepZ = Math.sign(this._direction.z);
 
-    const tDeltaX = stepX !== 0 ? Math.abs(1 / direction.x) : Infinity;
-    const tDeltaY = stepY !== 0 ? Math.abs(1 / direction.y) : Infinity;
-    const tDeltaZ = stepZ !== 0 ? Math.abs(1 / direction.z) : Infinity;
+    const tDeltaX = stepX !== 0 ? Math.abs(1 / this._direction.x) : Infinity;
+    const tDeltaY = stepY !== 0 ? Math.abs(1 / this._direction.y) : Infinity;
+    const tDeltaZ = stepZ !== 0 ? Math.abs(1 / this._direction.z) : Infinity;
 
     let tMaxX =
-      stepX > 0 ? (Math.floor(start.x) + 1 - start.x) * tDeltaX : (start.x - Math.floor(start.x)) * tDeltaX;
+      stepX > 0 ? (Math.floor(this._start.x) + 1 - this._start.x) * tDeltaX : (this._start.x - Math.floor(this._start.x)) * tDeltaX;
     let tMaxY =
-      stepY > 0 ? (Math.floor(start.y) + 1 - start.y) * tDeltaY : (start.y - Math.floor(start.y)) * tDeltaY;
+      stepY > 0 ? (Math.floor(this._start.y) + 1 - this._start.y) * tDeltaY : (this._start.y - Math.floor(this._start.y)) * tDeltaY;
     let tMaxZ =
-      stepZ > 0 ? (Math.floor(start.z) + 1 - start.z) * tDeltaZ : (start.z - Math.floor(start.z)) * tDeltaZ;
+      stepZ > 0 ? (Math.floor(this._start.z) + 1 - this._start.z) * tDeltaZ : (this._start.z - Math.floor(this._start.z)) * tDeltaZ;
 
-    const hitNormal = new THREE.Vector3();
     const maxSteps = PLAYER_CONFIG.reachDistance * 3;
 
     for (let i = 0; i < maxSteps; i++) {
       if (this.blockPlacer.hasBlock(x, y, z)) {
-        this.hitBlockPosition = new THREE.Vector3(x, y, z);
-        this.hitBlockNormal = hitNormal.clone();
+        // Found block
+        if (!this.hitBlockPosition) this.hitBlockPosition = new THREE.Vector3();
+        this.hitBlockPosition.set(x, y, z);
+        
+        if (!this.hitBlockNormal) this.hitBlockNormal = new THREE.Vector3();
+        this.hitBlockNormal.copy(this._hitNormal);
+        
         this.highlight.show(x, y, z);
         return;
       }
@@ -66,26 +75,26 @@ export class PlayerRaycasterService {
         if (tMaxX < tMaxZ) {
           x += stepX;
           tMaxX += tDeltaX;
-          hitNormal.set(-stepX, 0, 0);
+          this._hitNormal.set(-stepX, 0, 0);
         } else {
           z += stepZ;
           tMaxZ += tDeltaZ;
-          hitNormal.set(0, 0, -stepZ);
+          this._hitNormal.set(0, 0, -stepZ);
         }
       } else {
         if (tMaxY < tMaxZ) {
           y += stepY;
           tMaxY += tDeltaY;
-          hitNormal.set(0, -stepY, 0);
+          this._hitNormal.set(0, -stepY, 0);
         } else {
           z += stepZ;
           tMaxZ += tDeltaZ;
-          hitNormal.set(0, 0, -stepZ);
+          this._hitNormal.set(0, 0, -stepZ);
         }
       }
 
       const distSq =
-        (x + 0.5 - start.x) ** 2 + (y + 0.5 - start.y) ** 2 + (z + 0.5 - start.z) ** 2;
+        (x + 0.5 - this._start.x) ** 2 + (y + 0.5 - this._start.y) ** 2 + (z + 0.5 - this._start.z) ** 2;
       if (distSq > PLAYER_CONFIG.reachDistance ** 2) {
         break;
       }
