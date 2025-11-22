@@ -160,10 +160,6 @@ export class InventoryUiComponent {
     
     this.inventoryService.handleSlotClick(index, button);
   }
-  
-  toggleGridSize() {
-    this.inventoryService.toggleCraftingSize();
-  }
 
   onContextMenu(event: Event) {
       event.preventDefault();

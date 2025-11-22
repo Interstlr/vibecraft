@@ -73,6 +73,7 @@ export class PlayerInteractionService {
 
     const block = this.blockPlacer.getBlock(hitPos.x, hitPos.y, hitPos.z);
     if (block?.type === 'workbench') {
+      this.inventoryService.setCraftingGridSize(3);
       this.store.openInventoryMenu();
       this.input.unlockPointer();
       return;

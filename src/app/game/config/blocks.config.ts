@@ -67,6 +67,7 @@ export const BLOCKS: Record<string, BlockConfig> = {
     id: 4,  
     hardness: 2.0, 
     drops: 'cobble',
+    texture: 'assets/textures/cobblestone.webp',
     procedural: { color1: '#606060', color2: '#505050', type: 'noise' }
   },
   wood:      { 

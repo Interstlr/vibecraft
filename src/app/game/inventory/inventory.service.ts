@@ -65,12 +65,11 @@ export class InventoryService {
     this.setSlot(index, slot.item, slot.count);
   }
 
-  toggleCraftingSize() {
+  setCraftingGridSize(size: 2 | 3) {
     const current = this.craftingGridSize();
-    // If switching from 3 to 2, we might lose items in slots 41-45?
-    // Ideally we should drop them or move them to inventory.
-    // For now, we just hide them (they remain in memory).
-    this.craftingGridSize.set(current === 2 ? 3 : 2);
+    if (current === size) return;
+    
+    this.craftingGridSize.set(size);
     this.checkCrafting();
   }
 
