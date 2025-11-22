@@ -44,10 +44,10 @@ export class ItemDropSystemService {
       const drop = this.drops[i];
       drop.age += delta;
 
-      if (drop.age > this.DROP_LIFETIME) {
-        this.drops.splice(i, 1);
-        continue;
-      }
+      // if (drop.age > this.DROP_LIFETIME) {
+      //   this.drops.splice(i, 1);
+      //   continue;
+      // }
 
       this.updatePhysics(drop, delta);
 
@@ -83,7 +83,7 @@ export class ItemDropSystemService {
     const nextPos = drop.position.clone().add(move);
     
     // Check floor
-    // Drop is 0.25x0.25x0.25. Center is position. Bottom is y - 0.125.
+    // Drop is 0.25x0.25x0.25 (physically). Center is position. Bottom is y - radius.
     const radius = 0.125;
     
     // Check block at feet
@@ -93,7 +93,6 @@ export class ItemDropSystemService {
 
     if (this.blockPlacer.hasBlock(blockX, blockY, blockZ)) {
         // Hit ground
-        // Check if we are actually falling into it
         if (drop.velocity.y < 0) {
             // Snap to top of block
             nextPos.y = blockY + 1 + radius;

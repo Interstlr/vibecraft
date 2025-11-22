@@ -60,15 +60,21 @@ export class PlayerRaycasterService {
 
     for (let i = 0; i < maxSteps; i++) {
       if (this.blockPlacer.hasBlock(x, y, z)) {
-        // Found block
-        if (!this.hitBlockPosition) this.hitBlockPosition = new THREE.Vector3();
-        this.hitBlockPosition.set(x, y, z);
-        
-        if (!this.hitBlockNormal) this.hitBlockNormal = new THREE.Vector3();
-        this.hitBlockNormal.copy(this._hitNormal);
-        
-        this.highlight.show(x, y, z);
-        return;
+        // Skip water to allow mining underwater
+        const type = this.blockPlacer.getBlockType(x, y, z);
+        if (type === 'water') {
+          // Continue raycast through water
+        } else {
+          // Found solid block
+          if (!this.hitBlockPosition) this.hitBlockPosition = new THREE.Vector3();
+          this.hitBlockPosition.set(x, y, z);
+          
+          if (!this.hitBlockNormal) this.hitBlockNormal = new THREE.Vector3();
+          this.hitBlockNormal.copy(this._hitNormal);
+          
+          this.highlight.show(x, y, z);
+          return;
+        }
       }
 
       if (tMaxX < tMaxY) {

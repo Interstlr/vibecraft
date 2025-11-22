@@ -17,6 +17,10 @@ export class ToolRendererService {
   private toolMeshCache = new Map<string, THREE.Mesh>();
   private processingTexture = new Set<string>();
 
+  // Overlay rendering
+  private scene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
+
   constructor(
     private sceneManager: SceneManagerService,
     private inventoryService: InventoryService,
@@ -24,7 +28,20 @@ export class ToolRendererService {
   ) {}
 
   initialize() {
-    const camera = this.sceneManager.getCamera();
+    // Create separate scene/camera for tools to render them on top
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+    this.camera.position.set(0, 0, 0);
+    this.scene.add(this.camera);
+
+    // Add lighting to tool scene (so tools are always lit)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+    this.scene.add(ambientLight);
+    
+    // Directional light attached to camera to simulate consistent "sun" on tool
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(5, 10, 7);
+    this.camera.add(dirLight);
     
     this.handGroup = this.createHandModel();
     this.itemGroup = new THREE.Group();
@@ -41,8 +58,11 @@ export class ToolRendererService {
     blockMesh.visible = false;
     this.itemGroup.add(blockMesh);
 
-    camera.add(this.handGroup);
-    camera.add(this.itemGroup);
+    this.camera.add(this.handGroup);
+    this.camera.add(this.itemGroup);
+
+    // Register overlay
+    this.sceneManager.setOverlay(this.scene, this.camera);
   }
 
   setSwinging(active: boolean) {
@@ -152,59 +172,67 @@ export class ToolRendererService {
               ctx.drawImage(img, 0, 0);
               const data = ctx.getImageData(0, 0, img.width, img.height).data;
               
-              const geometries: THREE.BoxGeometry[] = [];
-              const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-              
               const w = img.width;
               const h = img.height;
               const pixelSize = 1 / 16; // Assuming 16x16 standard size normalized to 1 unit
               
-              // Create merged geometry
-              // For better performance we construct a single BufferGeometry manually
               const positions: number[] = [];
               const colors: number[] = [];
               const normals: number[] = [];
               const indices: number[] = [];
               let vIndex = 0;
 
-              const addBox = (x: number, y: number, r: number, g: number, b: number) => {
+              const getAlpha = (x: number, y: number) => {
+                  if (x < 0 || x >= w || y < 0 || y >= h) return 0;
+                  return data[(y * w + x) * 4 + 3];
+              };
+
+              const addFace = (
+                  x: number, y: number, 
+                  face: 'front'|'back'|'top'|'bottom'|'left'|'right', 
+                  r: number, g: number, b: number
+              ) => {
                   // Center of box
                   const cx = (x - w/2) * pixelSize;
                   const cy = -(y - h/2) * pixelSize; // Flip Y
-                  const cz = 0;
                   const hs = pixelSize / 2; // Half size
-                  const thickness = pixelSize / 2; // Extrusion depth
+                  const t = pixelSize / 2; // Extrusion depth (half thickness)
 
-                  // 6 faces, 4 verts each
-                  // Front (z+)
-                  positions.push(cx-hs, cy-hs, thickness, cx+hs, cy-hs, thickness, cx+hs, cy+hs, thickness, cx-hs, cy+hs, thickness);
-                  normals.push(0,0,1, 0,0,1, 0,0,1, 0,0,1);
-                  // Back (z-)
-                  positions.push(cx+hs, cy-hs, -thickness, cx-hs, cy-hs, -thickness, cx-hs, cy+hs, -thickness, cx+hs, cy+hs, -thickness);
-                  normals.push(0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1);
-                  // Top (y+)
-                  positions.push(cx-hs, cy+hs, thickness, cx+hs, cy+hs, thickness, cx+hs, cy+hs, -thickness, cx-hs, cy+hs, -thickness);
-                  normals.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
-                  // Bottom (y-)
-                  positions.push(cx-hs, cy-hs, -thickness, cx+hs, cy-hs, -thickness, cx+hs, cy-hs, thickness, cx-hs, cy-hs, thickness);
-                  normals.push(0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0);
-                  // Right (x+)
-                  positions.push(cx+hs, cy-hs, thickness, cx+hs, cy-hs, -thickness, cx+hs, cy+hs, -thickness, cx+hs, cy+hs, thickness);
-                  normals.push(1,0,0, 1,0,0, 1,0,0, 1,0,0);
-                  // Left (x-)
-                  positions.push(cx-hs, cy-hs, -thickness, cx-hs, cy-hs, thickness, cx-hs, cy+hs, thickness, cx-hs, cy+hs, -thickness);
-                  normals.push(-1,0,0, -1,0,0, -1,0,0, -1,0,0);
-
-                  for(let i=0; i<24; i++) {
-                      colors.push(r/255, g/255, b/255);
+                  // Darken sides for better 3D effect
+                  let cr = r/255, cg = g/255, cb = b/255;
+                  if (face !== 'front' && face !== 'back') {
+                      const darken = 0.7;
+                      cr *= darken; cg *= darken; cb *= darken;
                   }
 
-                  // Indices
-                  for(let i=0; i<6; i++) {
-                      const base = vIndex + i*4;
-                      indices.push(base, base+1, base+2, base, base+2, base+3);
+                  // Push 4 vertices per face
+                  if (face === 'front') { // z+
+                      positions.push(cx-hs, cy-hs, t,  cx+hs, cy-hs, t,  cx+hs, cy+hs, t,  cx-hs, cy+hs, t);
+                      normals.push(0,0,1, 0,0,1, 0,0,1, 0,0,1);
+                  } else if (face === 'back') { // z-
+                      positions.push(cx+hs, cy-hs, -t, cx-hs, cy-hs, -t, cx-hs, cy+hs, -t, cx+hs, cy+hs, -t);
+                      normals.push(0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1);
+                  } else if (face === 'top') { // y+
+                      positions.push(cx-hs, cy+hs, t,  cx+hs, cy+hs, t,  cx+hs, cy+hs, -t, cx-hs, cy+hs, -t);
+                      normals.push(0,1,0, 0,1,0, 0,1,0, 0,1,0);
+                  } else if (face === 'bottom') { // y-
+                      positions.push(cx-hs, cy-hs, -t, cx+hs, cy-hs, -t, cx+hs, cy-hs, t,  cx-hs, cy-hs, t);
+                      normals.push(0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0);
+                  } else if (face === 'right') { // x+
+                      positions.push(cx+hs, cy-hs, t,  cx+hs, cy-hs, -t, cx+hs, cy+hs, -t, cx+hs, cy+hs, t);
+                      normals.push(1,0,0, 1,0,0, 1,0,0, 1,0,0);
+                  } else if (face === 'left') { // x-
+                      positions.push(cx-hs, cy-hs, -t, cx-hs, cy-hs, t,  cx-hs, cy+hs, t,  cx-hs, cy+hs, -t);
+                      normals.push(-1,0,0, -1,0,0, -1,0,0, -1,0,0);
                   }
-                  vIndex += 24;
+
+                  for(let k=0; k<4; k++) {
+                      colors.push(cr, cg, cb);
+                  }
+
+                  // Indices (0,1,2, 0,2,3)
+                  indices.push(vIndex, vIndex+1, vIndex+2, vIndex, vIndex+2, vIndex+3);
+                  vIndex += 4;
               };
 
               for (let y = 0; y < h; y++) {
@@ -212,7 +240,18 @@ export class ToolRendererService {
                       const i = (y * w + x) * 4;
                       const alpha = data[i + 3];
                       if (alpha > 10) { // Threshold
-                          addBox(x, y, data[i], data[i+1], data[i+2]);
+                          const r = data[i];
+                          const g = data[i+1];
+                          const b = data[i+2];
+
+                          addFace(x, y, 'front', r, g, b);
+                          addFace(x, y, 'back', r, g, b);
+                          
+                          // Check neighbors to cull internal faces
+                          if (getAlpha(x, y - 1) <= 10) addFace(x, y, 'top', r, g, b);
+                          if (getAlpha(x, y + 1) <= 10) addFace(x, y, 'bottom', r, g, b);
+                          if (getAlpha(x + 1, y) <= 10) addFace(x, y, 'right', r, g, b);
+                          if (getAlpha(x - 1, y) <= 10) addFace(x, y, 'left', r, g, b);
                       }
                   }
               }
@@ -222,6 +261,8 @@ export class ToolRendererService {
               geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
               geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
               geometry.setIndex(indices);
+              
+              const material = new THREE.MeshLambertMaterial({ vertexColors: true });
               
               resolve(new THREE.Mesh(geometry, material));
           };

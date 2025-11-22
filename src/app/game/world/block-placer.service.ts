@@ -369,6 +369,29 @@ export class BlockPlacerService {
     }
   }
 
+  getChunksToSave(): { key: string; x: number; z: number; blocks: { x: number; y: number; z: number; type: string }[] }[] {
+    const result: { key: string; x: number; z: number; blocks: { x: number; y: number; z: number; type: string }[] }[] = [];
+
+    for (const [chunkKey, blockKeys] of this.chunkBlocks.entries()) {
+      const [cx, cz] = chunkKey.split(',').map(Number);
+      const blocks: { x: number; y: number; z: number; type: string }[] = [];
+
+      for (const key of blockKeys) {
+        const block = this.blockData.get(key);
+        if (block) {
+          const [x, y, z] = key.split(',').map(Number);
+          blocks.push({ x, y, z, type: block.type });
+        }
+      }
+
+      if (blocks.length > 0) {
+        result.push({ key: chunkKey, x: cx, z: cz, blocks });
+      }
+    }
+
+    return result;
+  }
+
   private getKey(x: number, y: number, z: number): string {
     return `${x},${y},${z}`;
   }

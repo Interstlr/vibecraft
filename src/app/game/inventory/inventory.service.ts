@@ -36,6 +36,19 @@ export class InventoryService {
     // Inventory starts empty
   }
 
+  setSlots(slots: InventorySlot[]) {
+    if (slots.length !== this.TOTAL_SLOTS) {
+        // If size mismatch (e.g. from older save), try to map correctly or pad
+        const newSlots = Array(this.TOTAL_SLOTS).fill(null).map(() => ({ item: null, count: 0 }));
+        slots.forEach((s, i) => {
+            if (i < this.TOTAL_SLOTS) newSlots[i] = s;
+        });
+        this.slots.set(newSlots);
+    } else {
+        this.slots.set(slots);
+    }
+  }
+
   getAllSlots(): InventorySlot[] {
     return this.slots();
   }

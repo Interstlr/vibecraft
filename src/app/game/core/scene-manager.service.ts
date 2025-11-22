@@ -10,6 +10,8 @@ export class SceneManagerService {
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private resizeHandler = () => this.handleResize();
+  private overlayScene: THREE.Scene | null = null;
+  private overlayCamera: THREE.Camera | null = null;
 
   initialize(container: HTMLElement) {
     this.dispose();
@@ -67,7 +69,19 @@ export class SceneManagerService {
   render() {
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
+      
+      if (this.overlayScene && this.overlayCamera) {
+        this.renderer.autoClear = false;
+        this.renderer.clearDepth();
+        this.renderer.render(this.overlayScene, this.overlayCamera);
+        this.renderer.autoClear = true;
+      }
     }
+  }
+
+  setOverlay(scene: THREE.Scene, camera: THREE.Camera) {
+    this.overlayScene = scene;
+    this.overlayCamera = camera;
   }
 
   dispose() {
@@ -97,5 +111,10 @@ export class SceneManagerService {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    if (this.overlayCamera instanceof THREE.PerspectiveCamera) {
+        this.overlayCamera.aspect = window.innerWidth / window.innerHeight;
+        this.overlayCamera.updateProjectionMatrix();
+    }
   }
 }

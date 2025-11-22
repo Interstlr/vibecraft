@@ -119,14 +119,20 @@ export const BLOCKS: Record<string, BlockConfig> = {
   bedrock:   { id: 0,  hardness: -1, texture: 'assets/minecraft/textures/block/bedrock.png', procedural: { color1: '#000000', color2: '#222222', type: 'noise' } },
   
   // Items that might be referenced
-  stick: { id: 100, hardness: 0, texture: 'assets/minecraft/textures/item/stick.png', procedural: { color1: '#8D6E63' } },
-  coal:  { id: 101, hardness: 0, texture: 'assets/minecraft/textures/item/coal.png', procedural: { color1: '#212121', color2: '#000000', type: 'noise' } },
+  stick: { id: 100, hardness: 0, texture: 'assets/minecraft/textures/item/stick.png', transparent: true, solid: false, procedural: { color1: '#8D6E63' } },
+  coal:  { id: 101, hardness: 0, texture: 'assets/minecraft/textures/item/coal.png', transparent: true, solid: false, procedural: { color1: '#212121', color2: '#000000', type: 'noise' } },
   sapling: { id: 102, hardness: 0, texture: 'assets/minecraft/textures/block/oak_sapling.png', transparent: true, solid: false, procedural: { color1: '#228B22' } },
 
   // Tools
-  wooden_shovel: { id: 200, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_shovel.png', procedural: { color1: '#C19A6B' } },
-  wooden_pickaxe: { id: 201, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_pickaxe.png', procedural: { color1: '#C19A6B' } },
-  wooden_axe: { id: 202, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_axe.png', procedural: { color1: '#C19A6B' } },
-  wooden_sword: { id: 203, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_sword.png', procedural: { color1: '#C19A6B' } },
+  wooden_shovel: { id: 200, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_shovel.png', transparent: true, procedural: { color1: '#C19A6B' } },
+  wooden_pickaxe: { id: 201, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_pickaxe.png', transparent: true, procedural: { color1: '#C19A6B' } },
+  wooden_axe: { id: 202, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_axe.png', transparent: true, procedural: { color1: '#C19A6B' } },
+  wooden_sword: { id: 203, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/wooden_sword.png', transparent: true, procedural: { color1: '#C19A6B' } },
+
+  // Stone Tools
+  stone_shovel: { id: 210, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/stone_shovel.png', transparent: true, procedural: { color1: '#7d7d7d' } },
+  stone_pickaxe: { id: 211, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/stone_pickaxe.png', transparent: true, procedural: { color1: '#7d7d7d' } },
+  stone_axe: { id: 212, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/stone_axe.png', transparent: true, procedural: { color1: '#7d7d7d' } },
+  stone_sword: { id: 213, hardness: 0, isTool: true, texture: 'assets/minecraft/textures/item/stone_sword.png', transparent: true, procedural: { color1: '#7d7d7d' } },
 } as const;
 

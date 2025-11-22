@@ -1,9 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Vector3 } from 'three';
 import { WorldGeneratorService } from '../generation/world-generator.service';
 import { BlockPlacerService } from '../block-placer.service';
 import { WorldBuilder } from '../generation/tree-generator.service';
 import { InstancedRendererService } from '../../rendering/instanced-renderer.service';
+import { WorldStorageService } from '../world-storage.service';
 
 @Injectable({
   providedIn: 'root'
@@ -33,6 +34,8 @@ export class ChunkManagerService implements WorldBuilder {
   private initialLoadProgressCallback?: (percent: number) => void;
   private initialLoadResolver?: () => void;
 
+  private worldStorage = inject(WorldStorageService);
+
   constructor(
     private worldGenerator: WorldGeneratorService,
     private blockPlacer: BlockPlacerService,
@@ -52,6 +55,10 @@ export class ChunkManagerService implements WorldBuilder {
 
   getRenderDistanceBlocks(): number {
       return this.RENDER_DISTANCE * this.CHUNK_SIZE;
+  }
+
+  getSeed(): number {
+    return this.seed;
   }
 
   // WorldBuilder implementation (fallback only)
@@ -226,7 +233,20 @@ export class ChunkManagerService implements WorldBuilder {
     }
   }
 
-  loadChunk(cx: number, cz: number, seed: number) {
+  async loadChunk(cx: number, cz: number, seed: number) {
+    // Try to load from storage first
+    const savedChunk = await this.worldStorage.loadChunk(cx, cz);
+
+    if (savedChunk) {
+      // Use saved data
+      if (savedChunk.blocks.length > 0) {
+        this.blockPlacer.addBlocksBatched(savedChunk.blocks);
+      }
+      this.instancedRenderer.syncCounts();
+      this.markChunkLoaded();
+      return;
+    }
+
     if (this.worker) {
         this.worker.postMessage({ chunkX: cx, chunkZ: cz, seed });
     } else {

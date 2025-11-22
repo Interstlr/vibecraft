@@ -192,6 +192,7 @@ export class PlayerInteractionService {
     const isWoodOrPlank = block.type === 'wood' || block.type === 'oak_planks' || block.type === 'workbench';
     const isStone = block.type === 'stone';
     const isDirtOrGrass = block.type === 'dirt' || block.type === 'grass';
+    const isSand = block.type === 'sand';
 
     // Tool effectiveness multipliers
     if (isAxe && isWoodOrPlank) {
@@ -199,6 +200,9 @@ export class PlayerInteractionService {
       baseSpeed /= tier;
     } else if (isPickaxe && isStone) {
       const tier = toolType === 'stone_pickaxe' ? 5.0 : 2.5; // Stone pickaxe is more effective
+      baseSpeed /= tier;
+    } else if (isShovel && isSand) {
+      const tier = toolType === 'stone_shovel' ? 8.0 : 5.0; // Sand digs faster
       baseSpeed /= tier;
     } else if (isShovel && isDirtOrGrass) {
       const tier = toolType === 'stone_shovel' ? 6.0 : 3.0; // Stone shovel is faster
@@ -311,22 +315,15 @@ export class PlayerInteractionService {
       camera.getWorldDirection(dir);
       
       const start = camera.position.clone();
-      // Hand position offset (slightly down and right usually, but center is fine)
-      start.y -= 0.2; 
+      start.y -= 0.2; // Hand offset
       
-      const maxDist = 0.6;
-      const step = 0.1;
-      
-      let actualDist = maxDist;
-      
-      // Raymarch to check for obstacles
-      for (let d = 0.1; d <= maxDist; d += step) {
-          const testPos = start.clone().add(dir.clone().multiplyScalar(d));
-          // Check radius around item to ensure it fits
-          if (this.checkCollision(testPos, 0.15)) {
-              actualDist = Math.max(0, d - 0.2); // Back up a bit
-              break;
-          }
+      // Basic spawn 0.5m ahead
+      let actualDist = 0.5;
+      const testPos = start.clone().add(dir.clone().multiplyScalar(actualDist));
+
+      // If spawning inside a block, pull it back closer to player
+      if (this.checkCollision(testPos, 0.1)) {
+          actualDist = 0.2; // Much closer if blocked
       }
       
       const spawnPos = start.clone().add(dir.clone().multiplyScalar(actualDist));
@@ -340,6 +337,8 @@ export class PlayerInteractionService {
   }
 
   private checkCollision(pos: THREE.Vector3, radius: number): boolean {
+      // Keep helper for potential future use, or remove if unused. 
+      // For now, reverting usage in calculateDropTrajectory.
       const minX = Math.floor(pos.x - radius);
       const maxX = Math.floor(pos.x + radius);
       const minY = Math.floor(pos.y - radius);

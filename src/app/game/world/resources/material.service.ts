@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as THREE from 'three';
 import { BLOCKS, BlockDefinition, BlockFaceDefinition, ProceduralConfig } from '../../config/blocks.config';
+import { ITEMS_CONFIG } from '../../config/items.config';
 
 @Injectable({
   providedIn: 'root'
@@ -43,14 +44,27 @@ export class MaterialService {
   }
 
   private initMaterials() {
+    // 1. Initialize Blocks
     Object.entries(BLOCKS).forEach(([key, def]) => {
         // Handle tools/special items
         if (def.isTool) {
             if (key === 'hover') {
                 this.materials[key] = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
-            } else if (def.procedural?.type === 'flat') {
-                 const colorHex = this.parseColor(def.procedural.color1);
-                 this.materials[key] = new THREE.MeshLambertMaterial({ color: colorHex });
+            } else {
+                 // Check for texture first
+                 if (def.texture) {
+                     this.materials[key] = this.createMaterial(
+                         { texture: def.texture, procedural: def.procedural, tint: def.tint },
+                         def.transparent ?? true, // Default to transparent for tools
+                         def.opacity
+                     );
+                 } else {
+                     // Create material for tools (even if not flat procedural)
+                     // Use procedural color if available, else fallback to a color based on name
+                     const colorStr = def.procedural?.color1 || this.generateColorFromName(key);
+                     const colorHex = this.parseColor(colorStr);
+                     this.materials[key] = new THREE.MeshLambertMaterial({ color: colorHex });
+                 }
             }
             return;
         }
@@ -92,6 +106,33 @@ export class MaterialService {
              this.materials[key] = materials;
         }
     });
+
+    // 2. Initialize Items (from ITEMS_CONFIG that are not in BLOCKS)
+    Object.keys(ITEMS_CONFIG).forEach(key => {
+        if (this.materials[key]) return; // Already handled via BLOCKS
+
+        // Create a simple material for items
+        const colorStr = this.generateColorFromName(key);
+        const colorHex = this.parseColor(colorStr);
+        this.materials[key] = new THREE.MeshLambertMaterial({ color: colorHex });
+    });
+  }
+  
+  private generateColorFromName(name: string): string {
+      // Specific overrides for common items not in BLOCKS
+      if (name.includes('diamond')) return '#00FFFF';
+      if (name.includes('gold')) return '#FFD700';
+      if (name.includes('iron')) return '#C0C0C0';
+      if (name.includes('stone')) return '#7d7d7d';
+      if (name.includes('wood')) return '#8B4513';
+      
+      // Hash fallback
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+      return '#' + "00000".substring(0, 6 - c.length) + c;
   }
 
   private createMaterial(config: BlockFaceDefinition, transparent: boolean = false, opacity?: number): THREE.Material {
