@@ -28,8 +28,7 @@ export class GameStateService {
   // --- UI State ---
   selectedSlot = signal(1); // 1-9
   isMenuOpen = signal(false);
-  activeMenu = signal<'none' | 'inventory' | 'workbench'>('none');
-  showInstructions = signal(false);
+  activeMenu = signal<'none' | 'inventory' | 'workbench' | 'pause'>('none');
   
   // --- Derived State ---
   selectedBlockName = computed(() => {
@@ -130,6 +129,11 @@ export class GameStateService {
   openWorkbenchMenu() {
     this.isMenuOpen.set(true);
     this.activeMenu.set('workbench');
+  }
+
+  openPauseMenu() {
+    this.isMenuOpen.set(true);
+    this.activeMenu.set('pause');
   }
 
   craftWorkbench() {
