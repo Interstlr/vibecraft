@@ -8,6 +8,7 @@ import { createNoise2D, NoiseFunction2D } from 'simplex-noise';
 })
 export class WorldGeneratorService {
   private readonly CHUNK_SIZE = 16;
+  private readonly SEA_LEVEL = 22;
   private noise2D: NoiseFunction2D | null = null;
   private currentSeed: number | null = null;
   
@@ -39,9 +40,8 @@ export class WorldGeneratorService {
         
         // Check if valid spot for tree (Grass)
         // Replicate logic from generateColumn
-        const seaLevel = 22;
-        const isUnderwater = height < seaLevel;
-        const isBeach = height >= seaLevel && height <= seaLevel + 2;
+        const isUnderwater = height < this.SEA_LEVEL;
+        const isBeach = height >= this.SEA_LEVEL && height <= this.SEA_LEVEL + 2;
         
         // Only spawn on "Grass" (not underwater, not beach)
         if (!isUnderwater && !isBeach) {
@@ -53,15 +53,14 @@ export class WorldGeneratorService {
 
   // Get the surface height at world coordinates (for player spawning, etc.)
   getSurfaceHeight(x: number, z: number, seed: number): number {
-    return this.getHeight(x, z, seed);
+    return Math.max(this.getHeight(x, z, seed), this.SEA_LEVEL);
   }
 
   private generateColumn(x: number, z: number, world: WorldBuilder, seed: number) {
     const height = this.getHeight(x, z, seed);
-    const seaLevel = 22;
     
-    const isUnderwater = height < seaLevel;
-    const isBeach = height >= seaLevel && height <= seaLevel + 2;
+    const isUnderwater = height < this.SEA_LEVEL;
+    const isBeach = height >= this.SEA_LEVEL && height <= this.SEA_LEVEL + 2;
 
     // Bedrock layer
     world.addBlock(x, 0, z, 'stone'); 
@@ -86,7 +85,7 @@ export class WorldGeneratorService {
 
     // Water
     if (isUnderwater) {
-      for (let y = height + 1; y <= seaLevel; y++) {
+      for (let y = height + 1; y <= this.SEA_LEVEL; y++) {
         world.addBlock(x, y, z, 'water');
       }
     }
