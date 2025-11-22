@@ -78,9 +78,9 @@ export class GameLoopService {
     const delta = Math.min((time - this.prevTime) / 1000, 0.1);
     this.prevTime = time;
 
-    // Chunk update throttle (every 0.5s)
+    // Chunk update throttle
     this.chunkUpdateTimer += delta;
-    if (this.chunkUpdateTimer >= 0.5) {
+    if (this.chunkUpdateTimer >= 0.1) {
       this.chunkUpdateTimer = 0;
       this.chunkManager.update(this.playerController.position);
     }
@@ -113,7 +113,7 @@ export class GameLoopService {
       this.playerRaycaster.reset();
     }
 
-    this.grassSystem.update(delta);
+    this.grassSystem.update(delta, this.playerController.position);
     this.leavesSystem.update(delta);
     this.skyRenderer.update();
     this.instancedRenderer.syncCounts();

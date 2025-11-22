@@ -8,8 +8,10 @@ import { WORLD_CONFIG } from '../../config/world.config';
   providedIn: 'root',
 })
 export class InstancedRendererService {
-  // Increased multiplier to accomodate deep stone layers (30+ blocks deep)
-  private readonly maxInstances = Math.max(10000, WORLD_CONFIG.size * WORLD_CONFIG.size * 50);
+  // Limit instances to a reasonable number for performance.
+  // With occlusion culling, we only render visible blocks (surface),
+  // so 50,000 is usually enough for a 128-block render distance.
+  private readonly maxInstances = 50000;
   private instancedMeshes = new Map<string, THREE.InstancedMesh>();
   private nextInstanceIndex = new Map<string, number>();
   private freeInstanceIndices = new Map<string, number[]>();

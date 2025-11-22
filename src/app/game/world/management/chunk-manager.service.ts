@@ -3,7 +3,6 @@ import { Vector3 } from 'three';
 import { WorldGeneratorService } from '../generation/world-generator.service';
 import { BlockPlacerService } from '../block-placer.service';
 import { WorldBuilder } from '../generation/tree-generator.service';
-
 import { InstancedRendererService } from '../../rendering/instanced-renderer.service';
 
 @Injectable({
@@ -17,6 +16,13 @@ export class ChunkManagerService implements WorldBuilder {
   
   private loadedChunks = new Set<string>(); // 'x,z'
   private seed = 123; // Default seed
+  
+  private batchBlocks: {x: number, y: number, z: number, type: string}[] = [];
+  private isBatching = false;
+
+  // Optimization state
+  private lastChunkX = -999999;
+  private lastChunkZ = -999999;
 
   constructor(
     private worldGenerator: WorldGeneratorService,
@@ -26,8 +32,12 @@ export class ChunkManagerService implements WorldBuilder {
 
   // WorldBuilder implementation
   addBlock(x: number, y: number, z: number, type: string): void {
-    // Don't broadcast generation events to avoid network spam
-    this.blockPlacer.addBlock(x, y, z, type, false); 
+    if (this.isBatching) {
+      this.batchBlocks.push({x, y, z, type});
+    } else {
+      // Don't broadcast generation events to avoid network spam
+      this.blockPlacer.addBlock(x, y, z, type, false); 
+    }
   }
 
   hasBlock(x: number, y: number, z: number): boolean {
@@ -36,11 +46,20 @@ export class ChunkManagerService implements WorldBuilder {
 
   setSeed(seed: number) {
     this.seed = seed;
+    this.lastChunkX = -999999;
   }
 
   update(playerPos: Vector3, forceAll: boolean = false) {
     const chunkX = Math.floor(playerPos.x / this.CHUNK_SIZE);
     const chunkZ = Math.floor(playerPos.z / this.CHUNK_SIZE);
+
+    // OPTIMIZATION: Don't recalculate chunks if player hasn't moved to a new chunk
+    // (Unless it's a forced full update)
+    if (!forceAll && chunkX === this.lastChunkX && chunkZ === this.lastChunkZ) {
+        return;
+    }
+    this.lastChunkX = chunkX;
+    this.lastChunkZ = chunkZ;
 
     const neededChunks = new Set<string>();
     
@@ -72,18 +91,30 @@ export class ChunkManagerService implements WorldBuilder {
     // 2. Load new chunks
     // If forceAll is true, we load ALL needed chunks at once (e.g. initial spawn)
     // Otherwise, we load only ONE per frame to smooth out performance
+    let loadedCount = 0;
+    const maxLoads = forceAll ? 1000 : 2; // Load max 2 chunks per update if walking
+
     for (const key of neededChunks) {
       if (!this.loadedChunks.has(key)) {
         const [cx, cz] = key.split(',').map(Number);
         this.loadChunk(cx, cz, this.seed);
         this.loadedChunks.add(key);
-        if (!forceAll) break; // Stop after loading 1 chunk if not forced
+        
+        loadedCount++;
+        if (loadedCount >= maxLoads) break; 
       }
     }
   }
 
   loadChunk(cx: number, cz: number, seed: number) {
+    this.isBatching = true;
     this.worldGenerator.generateChunk(cx, cz, this, seed);
+    this.isBatching = false;
+
+    if (this.batchBlocks.length > 0) {
+      this.blockPlacer.addBlocksBatched(this.batchBlocks);
+      this.batchBlocks = [];
+    }
     this.instancedRenderer.syncCounts();
   }
 
