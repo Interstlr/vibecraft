@@ -4,12 +4,13 @@ import { CommonModule } from '@angular/common';
 import { GameSceneComponent } from './app/components/game-scene.component';
 import { GameUiComponent } from './app/components/game-ui.component';
 import { MainMenuComponent } from './app/components/main-menu.component';
+import { LoadingScreenComponent } from './app/components/loading-screen.component';
 import { GameStateService } from './app/services/game-state.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, GameSceneComponent, GameUiComponent, MainMenuComponent],
+  imports: [CommonModule, GameSceneComponent, GameUiComponent, MainMenuComponent, LoadingScreenComponent],
   templateUrl: './app.component.html',
   styleUrls: []
 })

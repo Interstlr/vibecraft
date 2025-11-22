@@ -8,6 +8,7 @@ import { CrackOverlayService } from '../rendering/crack-overlay.service';
 import { ToolRendererService } from '../rendering/tool-renderer.service';
 import { SceneManagerService } from '../core/scene-manager.service';
 import { InputManagerService } from '../core/input-manager.service';
+import { SoundManagerService } from '../core/sound-manager.service';
 import { ItemDropSystemService } from '../systems/item-drop-system.service';
 import { ChickenSystemService } from '../systems/chicken-system.service';
 import { BLOCKS } from '../config/blocks.config';
@@ -19,6 +20,7 @@ import { PLAYER_CONFIG } from '../../config/player.config';
 export class PlayerInteractionService {
   private isMining = false; // Keeps track of if we are potentially mining (action held)
   private miningTimer = 0;
+  private soundTimer = 0;
   private raycasterThree = new THREE.Raycaster();
 
   constructor(
@@ -30,6 +32,7 @@ export class PlayerInteractionService {
     private toolRenderer: ToolRendererService,
     private sceneManager: SceneManagerService,
     private input: InputManagerService,
+    private soundManager: SoundManagerService,
     private itemDropSystem: ItemDropSystemService,
     private chickenSystem: ChickenSystemService,
   ) {}
@@ -37,6 +40,7 @@ export class PlayerInteractionService {
   handlePrimaryActionDown() {
     this.isMining = true;
     this.miningTimer = 0;
+    this.soundTimer = 1.0; // Force immediate sound
     this.toolRenderer.setSwinging(true);
 
     // Check for mob hit first
@@ -149,6 +153,15 @@ export class PlayerInteractionService {
       this.miningTimer = 0;
       this.crackOverlay.hide();
       return;
+    }
+
+    // Play mining sound
+    this.soundTimer += delta;
+    if (this.soundTimer >= 0.25) {
+      this.soundTimer = 0;
+      if (block.type === 'grass' || block.type === 'dirt') {
+        this.soundManager.playRandom('grass', 4);
+      }
     }
 
     const activeKey = this.crackOverlay.getActiveBlockKey();
@@ -275,6 +288,72 @@ export class PlayerInteractionService {
     for (let i = 0; i < dropCount; i++) {
       this.itemDropSystem.spawnDrop(dropItem, new THREE.Vector3(x + 0.5, y + 0.5, z + 0.5));
     }
+  }
+
+  handleDropItem() {
+    const selected = this.inventoryService.selectedItem();
+    if (!selected.item || selected.count <= 0) return;
+
+    if (this.inventoryService.removeOneFromSelected()) {
+      this.dropItem(selected.item, 1);
+    }
+  }
+
+  dropItem(item: string, count: number) {
+      const { position, velocity } = this.calculateDropTrajectory();
+      this.itemDropSystem.spawnDrop(item, position, count, velocity);
+  }
+
+  private calculateDropTrajectory(): { position: THREE.Vector3, velocity: THREE.Vector3 } {
+      const camera = this.sceneManager.getCamera();
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      
+      const start = camera.position.clone();
+      // Hand position offset (slightly down and right usually, but center is fine)
+      start.y -= 0.2; 
+      
+      const maxDist = 0.6;
+      const step = 0.1;
+      
+      let actualDist = maxDist;
+      
+      // Raymarch to check for obstacles
+      for (let d = 0.1; d <= maxDist; d += step) {
+          const testPos = start.clone().add(dir.clone().multiplyScalar(d));
+          // Check radius around item to ensure it fits
+          if (this.checkCollision(testPos, 0.15)) {
+              actualDist = Math.max(0, d - 0.2); // Back up a bit
+              break;
+          }
+      }
+      
+      const spawnPos = start.clone().add(dir.clone().multiplyScalar(actualDist));
+      
+      const velocity = dir.clone().multiplyScalar(6.0);
+      velocity.y += 2.0; // Arc
+      velocity.x += (Math.random() - 0.5) * 0.5;
+      velocity.z += (Math.random() - 0.5) * 0.5;
+      
+      return { position: spawnPos, velocity };
+  }
+
+  private checkCollision(pos: THREE.Vector3, radius: number): boolean {
+      const minX = Math.floor(pos.x - radius);
+      const maxX = Math.floor(pos.x + radius);
+      const minY = Math.floor(pos.y - radius);
+      const maxY = Math.floor(pos.y + radius);
+      const minZ = Math.floor(pos.z - radius);
+      const maxZ = Math.floor(pos.z + radius);
+      
+      for(let x = minX; x <= maxX; x++) {
+          for(let y = minY; y <= maxY; y++) {
+              for(let z = minZ; z <= maxZ; z++) {
+                  if(this.blockPlacer.hasBlock(x, y, z)) return true;
+              }
+          }
+      }
+      return false;
   }
 
   private stopMining() {

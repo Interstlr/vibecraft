@@ -4,9 +4,7 @@ import { InventoryService } from '../game/inventory/inventory.service';
 import { InventorySlot } from '../game/inventory/inventory-slot';
 import { BLOCKS } from '../config/blocks.config';
 import { BlockIconService } from '../game/rendering/block-icon.service';
-import { ItemDropSystemService } from '../game/systems/item-drop-system.service';
-import { SceneManagerService } from '../game/core/scene-manager.service';
-import * as THREE from 'three';
+import { PlayerInteractionService } from '../game/player/player-interaction.service';
 
 const ITEM_COLORS: Record<string, string> = {
   'plank': '#C19A6B',
@@ -32,8 +30,7 @@ const ITEM_COLORS: Record<string, string> = {
 export class InventoryUiComponent {
   blocks = BLOCKS;
   blockIconService = inject(BlockIconService);
-  itemDropSystem = inject(ItemDropSystemService);
-  sceneManager = inject(SceneManagerService);
+  playerInteraction = inject(PlayerInteractionService);
   
   mouseX = signal(0);
   mouseY = signal(0);
@@ -84,7 +81,52 @@ export class InventoryUiComponent {
       .join(' ');
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent) {
+    if (event.code === 'KeyQ') {
+      this.dropOneItemHoveredOrHeld();
+    }
+  }
+
+  private dropOneItemHoveredOrHeld() {
+    // 1. If holding an item, drop one from held stack
+    const held = this.inventoryService.heldItem();
+    if (held.item) {
+      const dropped = this.inventoryService.dropOneHeld();
+      if (dropped) {
+        this.spawnDrop(dropped);
+      }
+      return;
+    }
+
+    // 2. If hovering over a slot, drop one from that slot
+    // We need to know which slot is hovered. 
+    // We can track hovered slot index in a signal.
+    const hoveredIndex = this.hoveredSlotIndex();
+    if (hoveredIndex !== -1) {
+      const slot = this.inventoryService.getSlot(hoveredIndex);
+      if (slot.item && slot.count > 0) {
+        // Logic to remove one from specific slot and return it
+        // InventoryService needs a method for this or we do it manually
+        const item = slot.item;
+        this.inventoryService.setSlot(hoveredIndex, slot.item, slot.count - 1);
+        if (slot.count - 1 === 0) {
+             this.inventoryService.setSlot(hoveredIndex, null, 0);
+        }
+        this.spawnDrop({ item, count: 1 });
+      }
+    }
+  }
+
+  private spawnDrop(dropped: InventorySlot) {
+     if (!dropped.item) return;
+     this.playerInteraction.dropItem(dropped.item, dropped.count);
+  }
+
+  hoveredSlotIndex = signal<number>(-1);
+
   onSlotMouseEnter(slotIndex: number, event: MouseEvent) {
+    this.hoveredSlotIndex.set(slotIndex);
     const slot = this.inventoryService.getSlot(slotIndex);
     if (slot.item) {
       this.tooltipItem.set(slot.item);
@@ -102,6 +144,7 @@ export class InventoryUiComponent {
   }
 
   onSlotMouseLeave() {
+    this.hoveredSlotIndex.set(-1);
     this.tooltipVisible.set(false);
     this.tooltipItem.set(null);
   }
@@ -134,28 +177,10 @@ export class InventoryUiComponent {
 
     if (event.button === 0) { // Left Click -> Drop Stack
        dropped = this.inventoryService.dropAllHeld();
-    } else if (event.button === 2) { // Right Click -> Drop One
-       dropped = this.inventoryService.dropOneHeld();
     }
     
     if (dropped && dropped.item) {
-       const camera = this.sceneManager.getCamera();
-       
-       const dir = new THREE.Vector3();
-       camera.getWorldDirection(dir);
-       
-       // Start closer to the player (hand position)
-       const spawnPos = camera.position.clone().add(dir.clone().multiplyScalar(0.5));
-       
-       // Velocity: reduce force to ensure it lands nearby (approx 2 blocks)
-       // 4 m/s forward + small arc up (3.5)
-       const velocity = dir.clone().multiplyScalar(4).add(new THREE.Vector3(0, 3.5, 0));
-       
-       // Add slight randomness to feel natural
-       velocity.x += (Math.random() - 0.5) * 0.5;
-       velocity.z += (Math.random() - 0.5) * 0.5;
-       
-       this.itemDropSystem.spawnDrop(dropped.item, spawnPos, dropped.count, velocity);
+       this.spawnDrop(dropped);
     }
   }
 }

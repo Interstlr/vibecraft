@@ -6,6 +6,8 @@ import { Injectable, signal, computed } from '@angular/core';
 export class GameStateService {
   // --- Game Flow ---
   isGameStarted = signal(false);
+  isLoading = signal(false);
+  loadingProgress = signal(0);
 
   // --- Stats ---
   fps = signal(0);
@@ -27,7 +29,7 @@ export class GameStateService {
   selectedSlot = signal(1); // 1-9
   isMenuOpen = signal(false);
   activeMenu = signal<'none' | 'inventory' | 'workbench'>('none');
-  showInstructions = signal(true);
+  showInstructions = signal(false);
   
   // --- Derived State ---
   selectedBlockName = computed(() => {
@@ -49,6 +51,18 @@ export class GameStateService {
   // Actions
   startGame() {
     this.isGameStarted.set(true);
+    this.isLoading.set(true);
+    this.loadingProgress.set(0);
+  }
+
+  setLoadingProgress(progress: number) {
+    this.loadingProgress.set(progress);
+    if (progress >= 100) {
+        // Small delay to let the user see 100%
+        setTimeout(() => {
+            this.isLoading.set(false);
+        }, 500);
+    }
   }
 
   // Inventory Management
