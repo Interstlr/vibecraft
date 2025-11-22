@@ -40,6 +40,54 @@ export class ChunkManagerService implements WorldBuilder {
     }
   }
 
+  async generateInitialChunks(playerPos: Vector3, onProgress: (percent: number) => void) {
+    const chunkX = Math.floor(playerPos.x / this.CHUNK_SIZE);
+    const chunkZ = Math.floor(playerPos.z / this.CHUNK_SIZE);
+    this.lastChunkX = chunkX;
+    this.lastChunkZ = chunkZ;
+
+    const neededChunks = new Set<string>();
+    // Calculate needed chunks within render distance
+    for (let x = -this.RENDER_DISTANCE; x <= this.RENDER_DISTANCE; x++) {
+      for (let z = -this.RENDER_DISTANCE; z <= this.RENDER_DISTANCE; z++) {
+        // Simple circular distance check
+        if (x*x + z*z <= this.RENDER_DISTANCE * this.RENDER_DISTANCE) {
+            const targetX = chunkX + x;
+            const targetZ = chunkZ + z;
+            
+            // Check world bounds
+            if (Math.abs(targetX) <= this.HALF_WORLD_SIZE && Math.abs(targetZ) <= this.HALF_WORLD_SIZE) {
+                neededChunks.add(`${targetX},${targetZ}`);
+            }
+        }
+      }
+    }
+
+    const totalChunks = neededChunks.size;
+    let processed = 0;
+    const batchSize = 4; // Process chunks in small batches to keep UI responsive
+
+    const chunksArray = Array.from(neededChunks);
+    
+    for (let i = 0; i < chunksArray.length; i += batchSize) {
+        const batch = chunksArray.slice(i, i + batchSize);
+        
+        for (const key of batch) {
+             if (!this.loadedChunks.has(key)) {
+                const [cx, cz] = key.split(',').map(Number);
+                this.loadChunk(cx, cz, this.seed);
+                this.loadedChunks.add(key);
+             }
+             processed++;
+        }
+
+        onProgress(Math.min(100, (processed / totalChunks) * 100));
+        
+        // Yield to main thread to allow UI to render
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  }
+
   hasBlock(x: number, y: number, z: number): boolean {
     return this.blockPlacer.hasBlock(x, y, z);
   }
@@ -47,6 +95,14 @@ export class ChunkManagerService implements WorldBuilder {
   setSeed(seed: number) {
     this.seed = seed;
     this.lastChunkX = -999999;
+  }
+
+  reset() {
+    this.loadedChunks.clear();
+    this.lastChunkX = -999999;
+    this.lastChunkZ = -999999;
+    this.batchBlocks = [];
+    this.isBatching = false;
   }
 
   update(playerPos: Vector3, forceAll: boolean = false) {

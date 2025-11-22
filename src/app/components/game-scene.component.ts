@@ -21,12 +21,13 @@ import { MultiplayerService } from '../game/networking/multiplayer.service';
 import { RemotePlayerRendererService } from '../game/rendering/remote-player-renderer.service';
 import { environment } from '../../environments/environment';
 import { take } from 'rxjs/operators';
+import { GameStateService } from '../services/game-state.service';
 
 @Component({
   selector: 'app-game-scene',
   standalone: true,
   imports: [CommonModule],
-  template: '<div #rendererContainer class="absolute top-0 left-0 w-full h-full"></div>',
+  template: '<div #rendererContainer class="absolute top-0 left-0 w-full h-full" (click)="lockControls()"></div>',
 })
 export class GameSceneComponent implements AfterViewInit, OnDestroy {
   @ViewChild('rendererContainer') rendererContainer!: ElementRef<HTMLDivElement>;
@@ -48,6 +49,7 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   private chickenSystem = inject(ChickenSystemService);
   private multiplayer = inject(MultiplayerService);
   private remotePlayerRenderer = inject(RemotePlayerRendererService);
+  private gameState = inject(GameStateService);
 
   ngAfterViewInit() {
     const container = this.rendererContainer.nativeElement;
@@ -69,10 +71,12 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
       onPrimaryDown: () => this.playerInteraction.handlePrimaryActionDown(),
       onPrimaryUp: () => this.playerInteraction.handlePrimaryActionUp(),
       onSecondaryDown: () => this.playerInteraction.handleSecondaryAction(),
+      onDropItem: () => this.playerInteraction.handleDropItem(),
     });
 
     this.initializeWorld();
   }
+
 
   ngOnDestroy() {
     this.gameLoop.stop();
@@ -85,11 +89,15 @@ export class GameSceneComponent implements AfterViewInit, OnDestroy {
   }
 
   private initializeWorld() {
-    const handleWorldInit = (seed: number) => {
+    const handleWorldInit = async (seed: number) => {
         this.chunkManager.setSeed(seed);
+        this.chunkManager.reset();
         
-        // Force initial load around 0,0 (load all chunks immediately)
-        this.chunkManager.update(new THREE.Vector3(0, 0, 0), true);
+        // Load chunks with progress bar
+        await this.chunkManager.generateInitialChunks(new THREE.Vector3(0, 0, 0), (progress) => {
+             this.gameState.setLoadingProgress(progress);
+        });
+
         this.instancedRenderer.syncCounts();
         
         // Spawn logic

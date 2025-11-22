@@ -3,5 +3,10 @@
   <app-main-menu></app-main-menu>
 } @else {
   <app-game-scene></app-game-scene>
-  <app-game-ui (requestLock)="onRequestLock()"></app-game-ui>
+  
+  @if (store.isLoading()) {
+    <app-loading-screen></app-loading-screen>
+  } @else {
+    <app-game-ui (requestLock)="onRequestLock()"></app-game-ui>
+  }
 }

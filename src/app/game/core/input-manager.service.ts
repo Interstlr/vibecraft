@@ -8,6 +8,7 @@ export interface InteractionCallbacks {
   onPrimaryDown: () => void;
   onPrimaryUp: () => void;
   onSecondaryDown: () => void;
+  onDropItem: () => void;
 }
 
 export interface MovementState {
@@ -149,6 +150,10 @@ export class InputManagerService {
         case 'ControlRight':
           this.sprintActive = true;
           break;
+        case 'KeyQ':
+          // Drop selected item
+          this.callbacks?.onDropItem();
+          break;
         case 'Digit1': this.inventoryService.selectHotbarSlot(0); break;
         case 'Digit2': this.inventoryService.selectHotbarSlot(1); break;
         case 'Digit3': this.inventoryService.selectHotbarSlot(2); break;
@@ -233,4 +238,3 @@ export class InputManagerService {
     }
   }
 }
-
